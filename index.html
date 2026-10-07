@@ -1,0 +1,1691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<title>Option Greeks Lab</title>
+<meta name="description" content="Interactive visual lessons on option Greeks as partial derivatives of the Black–Scholes price.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: lab notebook. A sticky "contract" panel on the left holds the inputs of V(S,σ,τ,r,q);
+   the right column is a sequence of experiments, each a figure on graph-paper surface.
+   Color only ever means a Greek: Δ blue, Γ orange, ν aqua, Θ amber, ρ pink. UI chrome stays ink. */
+:root {
+  --bg: #eef2f0;
+  --surface: #fbfcfb;
+  --surface-2: #f4f7f5;
+  --ink: #121a18;
+  --ink-2: #45524e;
+  --muted: #74817d;
+  --grid: #e3e9e6;
+  --axis: #b7c2be;
+  --hair: rgba(18, 26, 24, 0.12);
+  --c-delta: #2a78d6;
+  --c-gamma: #eb6834;
+  --c-vega: #1baf7a;
+  --c-theta: #eda100;
+  --c-rho: #e87ba4;
+  --div-pos: #2a78d6;
+  --div-neg: #e34948;
+  --div-mid: #eef0ef;
+  --mesh-lo: #dde5e2;
+  --mesh-hi: #5d6d68;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --step--1: 0.8125rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.625rem;
+  --step-3: clamp(2.1rem, 1.4rem + 3vw, 3.6rem);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1312; --surface: #151b1a; --surface-2: #1b2321;
+    --ink: #eaf1ee; --ink-2: #b2beba; --muted: #7f8c88;
+    --grid: #222a28; --axis: #3a4542; --hair: rgba(234, 241, 238, 0.12);
+    --c-delta: #3987e5; --c-gamma: #d95926; --c-vega: #199e70; --c-theta: #c98500; --c-rho: #d55181;
+    --div-pos: #3987e5; --div-neg: #e66767; --div-mid: #262d2b;
+    --mesh-lo: #26302d; --mesh-hi: #a9bab4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1312; --surface: #151b1a; --surface-2: #1b2321;
+  --ink: #eaf1ee; --ink-2: #b2beba; --muted: #7f8c88;
+  --grid: #222a28; --axis: #3a4542; --hair: rgba(234, 241, 238, 0.12);
+  --c-delta: #3987e5; --c-gamma: #d95926; --c-vega: #199e70; --c-theta: #c98500; --c-rho: #d55181;
+  --div-pos: #3987e5; --div-neg: #e66767; --div-mid: #262d2b;
+  --mesh-lo: #26302d; --mesh-hi: #a9bab4;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+mjx-container { color: var(--ink); }
+mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; margin: 0.4em 0 !important; padding-block: 2px; }
+
+/* ---------- page frame ---------- */
+.page { max-width: 1340px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 36px); padding-block: 28px 80px; }
+.hero { display: grid; gap: 14px; padding-block: 12px 36px; max-width: 900px; }
+.eyebrow { font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.hero h1 { font-size: var(--step-3); font-weight: 800; line-height: 1.02; letter-spacing: -0.025em; }
+.hero h1 .d { font-family: var(--font-body); font-style: italic; font-weight: 400; letter-spacing: 0; }
+.hero p { max-width: 64ch; color: var(--ink-2); font-size: var(--step-1); line-height: 1.5; }
+
+.shell { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 36px; align-items: start; }
+main { display: grid; gap: 72px; min-width: 0; }
+
+/* ---------- contract panel ---------- */
+#panel {
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px);
+  max-height: calc(100vh - 32px); overflow: auto;
+  background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius);
+  padding: 18px; display: grid; gap: 16px;
+}
+#panel summary { display: none; }
+.panel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel-h h2 { font-size: var(--step-1); font-weight: 700; }
+.ctl { display: grid; gap: 2px; }
+.ctl-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: var(--step--1); }
+.ctl-row label { color: var(--ink-2); }
+.ctl-row label b { font-family: var(--font-body); font-style: italic; font-weight: 600; color: var(--ink); margin-right: 4px; font-size: 1rem; }
+.ctl-row output { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+input[type="range"] { width: 100%; accent-color: var(--ink); margin: 2px 0; height: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 8px; padding: 2px; background: var(--surface-2); gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 4px 11px; border-radius: 6px; cursor: pointer; font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:hover:not([aria-pressed="true"]) { background: var(--hair); }
+.readout { display: grid; grid-template-columns: auto 1fr auto; column-gap: 10px; row-gap: 3px; font-size: var(--step--1); align-items: baseline; border-top: 1px solid var(--hair); padding-top: 14px; }
+.readout .sym { font-family: var(--font-body); font-style: italic; font-weight: 600; font-size: 1rem; display: inline-flex; align-items: center; gap: 7px; }
+.readout .lbl { color: var(--muted); }
+.readout .num { text-align: right; }
+.sw { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--ink)); flex: none; display: inline-block; }
+.panel-note { font-size: var(--step--1); color: var(--muted); line-height: 1.45; }
+.btn-ghost { border: 1px solid var(--hair); background: transparent; border-radius: 7px; padding: 3px 10px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); cursor: pointer; }
+.btn-ghost:hover { background: var(--hair); }
+
+/* ---------- sections ---------- */
+.sec { display: grid; gap: 20px; scroll-margin-top: 24px; }
+.sec-head { display: grid; gap: 10px; max-width: 72ch; }
+.sec-head h2 { font-size: var(--step-2); font-weight: 700; line-height: 1.15; }
+.sec-head p { color: var(--ink-2); }
+.sec-head p + p { margin-top: 2px; }
+.sec-tag { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); letter-spacing: 0.06em; }
+.fig { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.fig-h { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.fig-h h3 { font-size: var(--step-0); font-weight: 700; }
+.fig-sub { font-size: var(--step--1); color: var(--muted); }
+canvas { display: block; width: 100%; touch-action: pan-y; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--step--1); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.k { width: 18px; height: 0; border-top: 2px solid var(--c, var(--ink)); display: inline-block; }
+.k.dash { border-top-style: dashed; }
+.k.dot { border-top-style: dotted; border-top-width: 2.5px; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--step--1); color: var(--ink-2); }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--ink); }
+.note { font-size: var(--step--1); color: var(--ink-2); line-height: 1.5; }
+.note b { color: var(--ink); font-weight: 600; }
+.split { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.stack { display: grid; gap: 0; }
+.stack-gap { height: 6px; }
+.side { display: grid; gap: 14px; min-width: 0; }
+
+.formula { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 6px; min-width: 0; font-size: 1.05rem; }
+.cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card .g { font-family: var(--font-body); font-style: italic; font-size: 1.9rem; line-height: 1; font-weight: 600; }
+.card .nm { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.card .val { font-family: var(--font-mono); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.card .unit { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.card .def { font-size: 0.95rem; min-height: 2.6em; display: flex; align-items: center; }
+
+table.t { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+table.t th { text-align: left; font-weight: 500; color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid var(--hair); }
+table.t td { padding: 5px 6px; border-bottom: 1px solid var(--hair); vertical-align: baseline; }
+table.t td.num, table.t th.num { text-align: right; }
+table.t tr.em td { font-weight: 600; color: var(--ink); }
+.tbl-wrap { overflow-x: auto; }
+
+.big-read { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: var(--step--1); color: var(--ink-2); }
+.big-read .num { color: var(--ink); font-size: 1rem; }
+
+/* 3D */
+#cv3 { height: 430px; touch-action: none; cursor: grab; }
+#cv3:active { cursor: grabbing; }
+.slices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.slices canvas { height: 210px; cursor: ew-resize; }
+.pd { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pd > div { border: 1px solid var(--hair); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.pd .lab { font-size: var(--step--1); color: var(--ink-2); display: flex; gap: 7px; align-items: center; }
+.pd .num { font-size: 1.15rem; }
+.pd .who { font-size: 12.5px; color: var(--muted); }
+
+/* tree */
+.tree-wrap { overflow-x: auto; }
+.tree { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 34px; min-width: 520px; padding-block: 4px; }
+.tree svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.tcol { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; position: relative; min-height: 330px; }
+.tcol-h { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; position: absolute; top: -2px; left: 0; }
+.tcol { padding-top: 22px; }
+.node { position: relative; z-index: 1; display: grid; gap: 1px; text-align: left; border: 1px solid var(--hair); background: var(--surface); border-radius: 8px; padding: 6px 10px; cursor: pointer; transition: border-color .15s; }
+.node:hover { border-color: var(--ink-2); }
+.node .n1 { display: flex; align-items: center; gap: 7px; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
+.node .n2 { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.node[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.node[aria-pressed="true"] .n2 { color: var(--surface); opacity: 0.75; }
+.edge { fill: none; stroke: var(--axis); stroke-width: 1.25; }
+.edge.on { stroke: var(--ink); stroke-width: 2; }
+.edge-lbl { font-family: var(--font-mono); font-size: 11px; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.detail-text { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.detail-text h3 { font-size: var(--step-1); }
+.q-big { font-size: var(--step-1); line-height: 1.35; font-family: var(--font-body); font-style: italic; }
+.detail-text .meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.detail-charts { display: grid; gap: 14px; min-width: 0; }
+#cvT1 { height: 200px; }
+#cvH { height: 220px; cursor: crosshair; }
+.heat-legend { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.heat-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--div-neg), var(--div-mid), var(--div-pos)); }
+
+/* bars (Taylor & PDE) */
+.bars { display: grid; gap: 4px; }
+.bar-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 96px; gap: 12px; align-items: center; font-size: var(--step--1); min-height: 26px; }
+.bar-row .bl { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-family: var(--font-mono); font-size: 12.5px; }
+.bar-row .bv { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.bar-row.sum { border-top: 1px solid var(--hair); padding-top: 6px; margin-top: 4px; }
+.bar-row.sum .bl, .bar-row.sum .bv { color: var(--ink); font-weight: 500; }
+.bar-row.sum + .bar-row.sum { border-top: 0; margin-top: 0; padding-top: 0; }
+.track { position: relative; height: 14px; }
+.track::before { content: ""; position: absolute; left: 50%; top: -5px; bottom: -5px; border-left: 1px solid var(--axis); }
+.bar { position: absolute; top: 0; height: 14px; background: var(--c, var(--ink)); }
+.bar.pos { border-radius: 0 4px 4px 0; }
+.bar.neg { border-radius: 4px 0 0 4px; }
+.sliders { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 20px; }
+.callout { display: grid; gap: 6px; border-left: 2px solid var(--ink); padding: 4px 0 4px 14px; font-size: var(--step--1); color: var(--ink-2); max-width: 70ch; }
+.callout .num { color: var(--ink); }
+
+/* friendly layer: primer, plain-English answers, "go deeper" folds */
+.sec-head b { color: var(--ink); font-weight: 600; }
+.primer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pcard { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 16px; display: grid; gap: 8px; align-content: start; }
+.pcard h3 { font-size: var(--step-0); font-weight: 700; line-height: 1.25; }
+.pcard p { font-size: 0.95rem; color: var(--ink-2); line-height: 1.5; }
+.pcard b { color: var(--ink); font-weight: 600; }
+.analogy { max-width: 560px; }
+.analogy td:first-child { color: var(--ink-2); }
+.card .q { font-size: 0.95rem; line-height: 1.35; color: var(--ink); }
+.card .ans { font-family: var(--font-mono); font-size: 1.05rem; font-variant-numeric: tabular-nums; color: var(--ink); }
+.card .ans small { display: block; font-size: 11.5px; color: var(--muted); font-family: var(--font-body); margin-top: 2px; }
+.card .def { font-size: 0.85rem; color: var(--ink-2); min-height: 0; border-top: 1px solid var(--hair); padding-top: 8px; margin-top: 2px; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.card .def .num { font-size: 12px; color: var(--muted); }
+.say { font-size: 0.98rem; color: var(--ink-2); line-height: 1.5; max-width: 72ch; }
+.say b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); font-size: 0.92em; }
+details.deeper { border: 1px solid var(--hair); border-radius: var(--radius); background: var(--surface); padding: 0; }
+details.deeper > summary { cursor: pointer; padding: 12px 16px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); list-style: none; display: flex; gap: 8px; align-items: center; }
+details.deeper > summary::-webkit-details-marker { display: none; }
+details.deeper > summary::before { content: "+"; font-size: 15px; width: 14px; color: var(--ink); }
+details.deeper[open] > summary::before { content: "−"; }
+details.deeper > summary:hover { color: var(--ink); }
+.deeper-body { padding: 0 16px 16px; display: grid; gap: 10px; min-width: 0; }
+details.deeper.fig { gap: 0; }
+.bar-row .bl .bt { display: grid; line-height: 1.2; }
+.bar-row .bl .bt small { font-family: var(--font-body); font-size: 11.5px; color: var(--muted); }
+.bar-row { grid-template-columns: 190px minmax(0, 1fr) 96px; }
+
+.car { display: grid; gap: 8px; background: var(--surface-2); border: 1px dashed var(--axis); border-radius: var(--radius); padding: 12px 16px 14px; max-width: 78ch; }
+.car p { font-size: 0.98rem; color: var(--ink-2); line-height: 1.55; }
+.car b { color: var(--ink); font-weight: 600; }
+.car-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.car-tag svg { color: var(--ink); }
+.kin { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; padding: 6px 0; font-size: 0.95rem; }
+.kin .kl { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+#cvRoad { touch-action: pan-y; }
+
+footer { margin-top: 80px; font-size: var(--step--1); color: var(--muted); max-width: 72ch; }
+
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; color: var(--ink); box-shadow: 0 6px 24px rgba(0,0,0,0.12); display: grid; gap: 3px; min-width: 140px; }
+#tip .tr { display: flex; justify-content: space-between; gap: 14px; align-items: center; }
+#tip .tl { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
+#tip .th { color: var(--muted); margin-bottom: 2px; }
+
+@media (max-width: 1180px) {
+  .split, .detail { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sliders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 960px) {
+  .shell { grid-template-columns: 1fr; gap: 28px; }
+  #panel { top: env(safe-area-inset-top, 0px); z-index: 20; max-height: 78vh; padding: 12px 14px; gap: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.08); }
+  #panel summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); }
+  #panel summary::-webkit-details-marker { display: none; }
+  #panel summary .chev { font-family: var(--font-body); color: var(--ink); }
+  #panel[open] summary { padding-bottom: 6px; border-bottom: 1px solid var(--hair); }
+  .panel-body { display: grid; gap: 14px; }
+}
+@media (max-width: 1180px) { .primer { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .cards { grid-template-columns: 1fr; }
+  .slices, .pd { grid-template-columns: 1fr; }
+  #cv3 { height: 340px; }
+  .bar-row { grid-template-columns: 112px minmax(0, 1fr) 76px; gap: 8px; }
+  .sliders { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+  svg: { fontCache: "global" },
+  options: { enableMenu: false }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" defer></script>
+
+<div class="page">
+  <header class="hero">
+    <span class="eyebrow">A visual guide to option Greeks</span>
+    <h1>The Greeks are <span class="d">just slopes</span>.</h1>
+    <p>An option's price depends on a handful of things: the stock price, how jumpy the stock is, how much time is left, and interest rates. Each Greek answers one simple question: <em>if one of those things moves a little and everything else stays put, how much does the option's price change?</em> In calculus that is called a partial derivative. This page lets you see each one.</p>
+  </header>
+
+  <div class="shell">
+    <details id="panel" open>
+      <summary><span id="sumText" class="num">S 100 · σ 25% · τ 0.50y · call</span><span class="chev">Your option ▾</span></summary>
+      <div class="panel-body">
+        <div class="panel-h">
+          <h2>Your option</h2>
+          <button class="btn-ghost" id="resetBtn" type="button">Reset</button>
+        </div>
+        <div class="seg" role="group" aria-label="Option type">
+          <button type="button" data-type="call" aria-pressed="true">Call</button>
+          <button type="button" data-type="put" aria-pressed="false">Put</button>
+        </div>
+        <div id="ctls" style="display:grid;gap:10px"></div>
+        <div class="readout" id="readout"></div>
+        <p class="panel-note">Every chart on the page uses these settings. Move a slider and watch what changes.</p>
+      </div>
+    </details>
+
+    <main>
+      <!-- primer -->
+      <section class="sec" id="primer">
+        <div class="sec-head">
+          <span class="sec-tag">Before we start</span>
+          <h2>Three ideas, no prior calculus needed</h2>
+          <p>A <b>call option</b> is the right to buy a stock at a fixed price <i>K</i> (the strike) on a future date. A <b>put</b> is the right to sell at <i>K</i>. Its price today depends on the inputs in the panel.</p>
+        </div>
+        <div class="primer">
+          <div class="pcard">
+            <h3>A derivative is a rate of change</h3>
+            <p>Your car's speedometer shows a derivative: how fast your position is changing right now. <b>Delta</b> is the option's speedometer for stock moves: dollars of option per dollar of stock.</p>
+          </div>
+          <div class="pcard">
+            <h3>"Partial" means one knob at a time</h3>
+            <p>Think of a mixing desk. Turn one knob, leave the others alone, and listen to what changes. Each Greek turns exactly one knob: stock price, volatility, time, or rates.</p>
+          </div>
+          <div class="pcard">
+            <h3>A second derivative is the change of the change</h3>
+            <p>Acceleration is how fast your speed changes. <b>Gamma</b> is how fast delta changes when the stock moves.</p>
+          </div>
+        </div>
+        <div class="fig">
+          <div class="fig-h">
+            <h3>A car that pulls away, then cruises</h3>
+            <button class="btn-ghost" id="carPlay" type="button">▶ Play</button>
+          </div>
+          <p class="note">Press play, or drag sideways on the charts to scrub through time. The faint dots on the road mark where the car was at each second: the gaps grow while it speeds up, then stay equal once it cruises.</p>
+          <canvas id="cvRoad" style="height:78px" aria-label="Road showing the car's position"></canvas>
+          <div class="legend">
+            <span><i class="k" style="--c:var(--ink)"></i>position</span>
+            <span><i class="k" style="--c:var(--c-delta)"></i>velocity, the slope of position</span>
+            <span><i class="k" style="--c:var(--c-gamma)"></i>acceleration, the slope of velocity</span>
+          </div>
+          <div class="stack">
+            <canvas id="cvCX" style="height:160px" aria-label="Car position against time"></canvas>
+            <div class="stack-gap"></div>
+            <canvas id="cvCV" style="height:120px" aria-label="Car velocity against time"></canvas>
+            <div class="stack-gap"></div>
+            <canvas id="cvCA" style="height:115px" aria-label="Car acceleration against time"></canvas>
+          </div>
+          <p class="say" id="carSay"></p>
+        </div>
+        <div class="analogy tbl-wrap">
+          <table class="t">
+            <thead><tr><th></th><th>Car</th><th>Option</th></tr></thead>
+            <tbody>
+              <tr><td>the function</td><td>position <i>x</i></td><td>option price <i>V</i></td></tr>
+              <tr><td>1st derivative</td><td>velocity <i>v</i> = d<i>x</i>/d<i>t</i></td><td>delta <i>Δ</i> = ∂<i>V</i>/∂<i>S</i></td></tr>
+              <tr><td>2nd derivative</td><td>acceleration <i>a</i> = d²<i>x</i>/d<i>t</i>²</td><td>gamma <i>Γ</i> = ∂²<i>V</i>/∂<i>S</i>²</td></tr>
+              <tr><td>3rd derivative</td><td>jerk</td><td>speed (yes, really)</td></tr>
+              <tr><td>what's changing</td><td>time <i>t</i></td><td>stock price <i>S</i></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="max-width:72ch">The key twist: for a car the thing that changes is <b>time</b>. For delta and gamma it is the <b>stock price</b>, so think of the stock price as the option's clock. The option also has a real "velocity through time": that's theta, Θ = ∂V/∂t. And because the option's price depends on several inputs at once, we write the curly ∂ (partial) to say which one is moving.</p>
+      </section>
+
+      <!-- §1 -->
+      <section class="sec" id="function">
+        <div class="sec-head">
+          <span class="sec-tag">§1 · The five Greeks</span>
+          <h2>Five questions about your option</h2>
+          <p>Each card asks one "what if" question and answers it for the option in the panel. The small formula underneath is the same question written in calculus.</p>
+        </div>
+        <div class="cards" id="cards"></div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>A car's dashboard has one main gauge, the speedometer, because its position changes with one thing: time. An option's price depends on five things, so it gets five gauges. Delta is a speedometer for stock moves, vega for volatility moves, theta for the clock ticking, and rho for rate moves. Gamma is the accelerometer sitting next to the delta gauge.</p></aside>
+        <details class="deeper">
+          <summary>Go deeper: the Black–Scholes formula behind these numbers</summary>
+          <div class="deeper-body">
+            <p class="note">All of the numbers come from one formula. You don't need to memorise it; the point is that it is an ordinary function, so we can take its derivatives.</p>
+            \[ C = S e^{-q\tau} N(d_1) - K e^{-r\tau} N(d_2), \qquad d_1 = \frac{\ln(S/K) + (r - q + \tfrac12\sigma^2)\,\tau}{\sigma\sqrt{\tau}}, \quad d_2 = d_1 - \sigma\sqrt{\tau} \]
+            <p class="note"><i>S</i> stock price, <i>K</i> strike, <i>σ</i> volatility, <i>τ</i> years to expiry, <i>r</i> interest rate, <i>q</i> dividend yield. <i>N</i> is the bell-curve probability function. A partial derivative nudges one input by a tiny amount <i>h</i> and keeps the rest fixed:</p>
+            \[ \frac{\partial V}{\partial S} = \lim_{h \to 0} \frac{V(S + h,\ \sigma,\ \tau,\ r) - V(S,\ \sigma,\ \tau,\ r)}{h} \]
+          </div>
+        </details>
+      </section>
+
+      <!-- §2 -->
+      <section class="sec" id="slope">
+        <div class="sec-head">
+          <span class="sec-tag">§2 · Delta and gamma</span>
+          <h2>Delta is how steep the price curve is</h2>
+          <p>The top chart shows what the option is worth at every stock price. Delta is how steep that curve is where you're standing, shown by the blue line that just touches it. A steep curve means the option moves almost dollar-for-dollar with the stock. A flat curve means it barely reacts.</p>
+          <p>Now plot that steepness for every stock price: that's the middle chart, delta. How steep is <em>that</em> curve? That's gamma, at the bottom. Gamma is biggest near the strike, where the price curve bends the most. <b>Drag sideways on any chart</b> to move the stock price.</p>
+        </div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>In physics class you plot a car's position against time, and velocity is the slope of that graph. Plot velocity, and its slope is acceleration. The three charts below are the same idea, with the stock price playing the role of time. They even have the same shapes as the car above.</p>
+          <p>Far to the left a call is <b>parked</b> (Δ ≈ 0: the stock moves, the option doesn't). Far to the right it is <b>cruising at full speed</b>, keeping pace with the stock dollar for dollar (Δ ≈ 1). Near the strike it is <b>accelerating hardest</b>, which is where gamma peaks. A put is the same car in reverse: its delta runs from −1 up to 0.</p></aside>
+        <div class="split">
+          <div class="fig">
+            <div class="fig-h">
+              <div class="legend">
+                <span><i class="k" style="--c:var(--ink)"></i>option value today</span>
+                <span><i class="k dot" style="--c:var(--muted)"></i>value at expiry</span>
+                <span><i class="k" style="--c:var(--c-delta)"></i>tangent line (its slope is Δ)</span>
+                <span><i class="k dash" style="--c:var(--c-gamma)"></i>curved estimate using Δ and Γ</span>
+                <span><i class="k dash" style="--c:var(--ink-2)"></i>rise-over-run line</span>
+              </div>
+            </div>
+            <div class="stack">
+              <canvas id="cvV" style="height:270px" aria-label="Option value against stock price, with tangent line"></canvas>
+              <div class="stack-gap"></div>
+              <canvas id="cvD" style="height:160px" aria-label="Delta against stock price"></canvas>
+              <div class="stack-gap"></div>
+              <canvas id="cvG" style="height:150px" aria-label="Gamma against stock price"></canvas>
+            </div>
+            <p class="say" id="slopeSay"></p>
+            <div class="toggles">
+              <label><input type="checkbox" id="tgTaylor" checked> Curved estimate (Δ and Γ)</label>
+              <label><input type="checkbox" id="tgSecant" checked> Rise-over-run line</label>
+            </div>
+          </div>
+          <div class="side">
+            <div class="fig">
+              <div class="fig-h"><h3>Measure the slope yourself</h3></div>
+              <p class="note">A computer measures slope the way you would with a ruler. Check the price a step <i>h</i> to the right and a step to the left, then divide the rise by the run. The smaller the step, the closer you get to the exact Δ.</p>
+              <p class="note"><b>In car terms:</b> it's like working out speed from two mile markers, the distance between them divided by the time it took. Time a shorter stretch and you get closer to what the speedometer says.</p>
+              <div class="ctl">
+                <div class="ctl-row"><label for="hIn"><b>h</b>step size</label><output id="hOut" class="num">1.00</output></div>
+                <input type="range" id="hIn" min="-10" max="1.3" step="0.01" value="0">
+              </div>
+              <div class="tbl-wrap">
+                <table class="t">
+                  <thead><tr><th>Method</th><th class="num">Value</th><th class="num">Off by</th></tr></thead>
+                  <tbody id="fdBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <details class="deeper fig">
+              <summary>Go deeper: is a smaller step always better?</summary>
+              <div class="deeper-body">
+                <p class="note">Mostly, yes. Looking both ways (central) shrinks the error much faster than looking one way (forward). But below a step of about 0.00001, the computer's rounding errors start to win and the estimate gets worse again. That makes the V shape below.</p>
+                <div class="legend">
+                  <span><i class="k dash" style="--c:var(--ink-2)"></i>one way (forward), error ∝ h</span>
+                  <span><i class="k" style="--c:var(--ink)"></i>both ways (central), error ∝ h²</span>
+                </div>
+                <canvas id="cvE" style="height:220px" aria-label="Log-log plot of finite difference error against step size"></canvas>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- §3 -->
+      <section class="sec" id="surface">
+        <div class="sec-head">
+          <span class="sec-tag">§3 · What "partial" means</span>
+          <h2>Walking on a price landscape</h2>
+          <p>Let two inputs change instead of one, and the option's price becomes a landscape. Stock price runs one way, volatility the other, and the height is the option's value.</p>
+          <p>Stand on the black dot. Walk along the <b>blue path</b>, where only the stock price changes, and the steepness under your feet is delta. Walk along the <b>orange path</b>, where only volatility changes, and the steepness is vega. You only ever walk in one direction at a time, and that's what <em>partial</em> means.</p>
+        </div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>Picture driving across a hillside. How steep the road feels depends on which way you point the car: head east and you feel one slope, head north and you feel another. A road sign saying "8% grade" is a partial derivative, the steepness in one chosen direction. Delta is the grade when you drive in the stock-price direction, and vega the grade in the volatility direction. The tangent plane is the patch of hillside under your wheels, pressed flat.</p></aside>
+        <div class="fig">
+          <div class="fig-h">
+            <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center">
+              <div style="display:flex;gap:8px;align-items:center"><span class="fig-sub">Height shows</span>
+                <div class="seg" role="group" aria-label="Surface quantity" id="segQ"></div></div>
+              <div style="display:flex;gap:8px;align-items:center"><span class="fig-sub">Second direction</span>
+                <div class="seg" role="group" aria-label="Second axis" id="segY"></div></div>
+            </div>
+            <div class="toggles">
+              <label><input type="checkbox" id="tgPlane" checked> Flat tangent plane</label>
+              <button class="btn-ghost" id="view3d" type="button">Reset view</button>
+            </div>
+          </div>
+          <canvas id="cv3" aria-label="Rotatable 3D landscape of the selected quantity over stock price and a second input"></canvas>
+          <div class="fig-sub" style="margin-top:-6px">Drag the landscape to rotate it. Move the dot with the panel sliders, or drag along the two charts below.</div>
+          <div class="pd" id="pdBox"></div>
+          <div class="slices">
+            <div class="stack"><div class="legend" id="lg1"></div><canvas id="cvS1" aria-label="Blue path: only stock price changes"></canvas></div>
+            <div class="stack"><div class="legend" id="lg2"></div><canvas id="cvS2" aria-label="Orange path: only the second input changes"></canvas></div>
+          </div>
+          <p class="note"><b>Try this:</b> set the height to Δ. Walking along blue now measures how delta changes with the stock, and that is gamma.</p>
+        </div>
+      </section>
+
+      <!-- §4 -->
+      <section class="sec" id="tree-sec">
+        <div class="sec-head">
+          <span class="sec-tag">§4 · Greeks of Greeks</span>
+          <h2>Take the slope again, and again</h2>
+          <p>Every Greek is itself a number that changes, so you can ask how <em>it</em> moves. Gamma is the delta of delta. Vanna asks how delta changes when volatility moves. Each arrow below means "how does this change when ___ moves?"</p>
+          <p>Here's a neat fact. Where two arrows meet, the order doesn't matter. "How does delta change with volatility?" and "how does vega change with the stock price?" give exactly the same number. Click <b>Vanna</b> to check.</p>
+        </div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>Take the derivative of acceleration and you get <b>jerk</b>, the lurch you feel when a driver stabs the brakes. The Greek called <b>speed</b> (confusingly) is the option's jerk: the third derivative of price with respect to the stock.</p>
+          <p>Loosely, "order doesn't matter" is like driving around a city block. Two blocks east then one north puts you on the same corner as one north then two east. Vanna gets to the same number whichever input you nudge first.</p></aside>
+        <div class="fig">
+          <div class="tree-wrap">
+            <div class="tree" id="tree">
+              <svg id="treeEdges" aria-hidden="true"></svg>
+            </div>
+          </div>
+        </div>
+        <div class="fig">
+          <div class="detail">
+            <div class="detail-text" id="detailText"></div>
+            <div class="detail-charts">
+              <div class="stack">
+                <div class="legend" id="lgT1"></div>
+                <canvas id="cvT1" aria-label="Selected Greek against stock price at three expiries"></canvas>
+              </div>
+              <div class="stack" style="gap:6px">
+                <div class="fig-sub" id="heatTitle">Over stock price and time left</div>
+                <canvas id="cvH" aria-label="Heatmap of the selected Greek over stock price and time to expiry"></canvas>
+                <div class="heat-legend"><span id="hlMin">−</span><div class="heat-bar"></div><span id="hlMax">+</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- §5 -->
+      <section class="sec" id="taylor">
+        <div class="sec-head">
+          <span class="sec-tag">§5 · Putting the Greeks to work</span>
+          <h2>Predict the new price without a pricing model</h2>
+          <p>Say the stock jumps $5, volatility rises 2 points and a week goes by. Each Greek predicts its own share of the change: delta covers the stock move, vega the volatility move, theta the passing time. Add the shares up and you have a quick estimate.</p>
+          <p>For small moves that's nearly perfect. For big moves the curves bend, and the second-order terms (gamma and friends) correct for it. The bottom rows compare both estimates with the true new price.</p>
+        </div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>Where will the car be in 3 seconds? A first guess is where it is now plus velocity × time. If it's speeding up, add ½ × acceleration × time². That formula from school physics is a Taylor expansion, and the option version has exactly the same shape:</p>
+          <div class="kin">
+            <span class="kl">car</span><span class="mono">x<sub>new</sub> ≈ x + v·dt + ½a·dt²</span>
+            <span class="kl">option</span><span class="mono">V<sub>new</sub> ≈ V + Δ·dS + ½Γ·dS²</span>
+          </div>
+          <p>The other rows repeat the same trick for the inputs a car doesn't have: volatility, time and rates.</p></aside>
+        <div class="fig">
+          <div class="sliders" id="tySliders"></div>
+          <div class="bars" id="tyBars"></div>
+          <p class="note" id="tyNote"></p>
+        </div>
+        <details class="deeper">
+          <summary>Go deeper: the formula (a Taylor expansion)</summary>
+          <div class="deeper-body">
+            \[ dV \approx \underbrace{\Delta\,dS + \nu\,d\sigma + \Theta\,dt + \rho\,dr}_{\text{first order: slopes}} \;+\; \underbrace{\tfrac12\Gamma\,dS^2 + \text{vanna}\,dS\,d\sigma + \tfrac12\text{volga}\,d\sigma^2 + \text{charm}\,dS\,dt}_{\text{second order: bends and cross effects}} \]
+          </div>
+        </details>
+      </section>
+
+      <!-- §6 -->
+      <section class="sec" id="pde">
+        <div class="sec-head">
+          <span class="sec-tag">§6 · How the Greeks fit together</span>
+          <h2>Theta pays for gamma</h2>
+          <p>Owning an option is like holding a ticket that pays off when the stock moves around. Gamma is how much you gain from those moves. Theta is the rent you pay every day to keep holding the ticket.</p>
+          <p>Black–Scholes sets the rent so that, for a typical day's move, the two cancel out exactly. The bars below show the balance for your option: the four pieces always add up to zero.</p>
+        </div>
+        <aside class="car"><span class="car-tag">In car terms</span><p>Here the analogy stretches, so switch cars: think of a taxi. You pay the lease and fuel every day whether anyone hails you or not; that's theta. You earn on every ride, and a ride pays whichever direction it goes; that's gamma, which earns on stock moves up or down. Black–Scholes sets the lease so that on an ordinary day of rides, you break even.</p></aside>
+        <div class="fig">
+          <div class="bars" id="pdeBars"></div>
+          <div class="callout" id="pdeCallout"></div>
+        </div>
+        <details class="deeper">
+          <summary>Go deeper: the Black–Scholes equation</summary>
+          <div class="deeper-body">
+            <p class="note">The balance above is a partial differential equation that every Black–Scholes price satisfies:</p>
+            \[ \underbrace{\frac{\partial V}{\partial t}}_{\Theta} + \tfrac12\sigma^2 S^2 \underbrace{\frac{\partial^2 V}{\partial S^2}}_{\Gamma} + (r - q)\,S\,\underbrace{\frac{\partial V}{\partial S}}_{\Delta} - rV = 0 \]
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    Prices and Greeks use the Black–Scholes–Merton formula for European options with a continuous dividend yield. The "measured" checks nudge the inputs by small steps and recompute. Theta, charm, color and veta measure the effect of time passing, so they run opposite to "time left" τ.
+  </footer>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+// ==MATH==
+const SQRT2PI = Math.sqrt(2 * Math.PI);
+function npdf(x) { return Math.exp(-0.5 * x * x) / SQRT2PI; }
+// Standard normal CDF, Hart (1968) double-precision algorithm as given by West (2005).
+function ncdf(x) {
+  const z = Math.abs(x);
+  let c = 0;
+  if (z <= 37) {
+    const e = Math.exp(-z * z / 2);
+    if (z < 7.07106781186547) {
+      let n = 3.52624965998911e-02 * z + 0.700383064443688;
+      n = n * z + 6.37396220353165; n = n * z + 33.912866078383; n = n * z + 112.079291497871;
+      n = n * z + 221.213596169931; n = n * z + 220.206867912376;
+      let d = 8.83883476483184e-02 * z + 1.75566716318264;
+      d = d * z + 16.064177579207; d = d * z + 86.7807322029461; d = d * z + 296.564248779674;
+      d = d * z + 637.333633378831; d = d * z + 793.826512519948; d = d * z + 440.413735824752;
+      c = e * n / d;
+    } else {
+      let f = z + 0.65; f = z + 4 / f; f = z + 3 / f; f = z + 2 / f; f = z + 1 / f;
+      c = e / f / 2.506628274631;
+    }
+  }
+  return x <= 0 ? c : 1 - c;
+}
+
+// Closed-form Black–Scholes–Merton price and Greeks. t-derivatives are in calendar time (= −∂/∂τ).
+function bs(p) {
+  const S = p.S, K = p.K, v = p.sigma, T = p.tau, r = p.r, q = p.q, call = p.type !== "put";
+  const sT = Math.sqrt(T), vsT = v * sT;
+  const d1 = (Math.log(S / K) + (r - q + 0.5 * v * v) * T) / vsT, d2 = d1 - vsT;
+  const eq = Math.exp(-q * T), er = Math.exp(-r * T);
+  const pd1 = npdf(d1), Nd1 = ncdf(d1), Nd2 = ncdf(d2), Nm1 = ncdf(-d1), Nm2 = ncdf(-d2);
+  const price = call ? S * eq * Nd1 - K * er * Nd2 : K * er * Nm2 - S * eq * Nm1;
+  const delta = call ? eq * Nd1 : -eq * Nm1;
+  const gamma = eq * pd1 / (S * vsT);
+  const vega = S * eq * pd1 * sT;
+  const thetaCommon = -S * eq * pd1 * v / (2 * sT);
+  const theta = call ? thetaCommon - r * K * er * Nd2 + q * S * eq * Nd1
+                     : thetaCommon + r * K * er * Nm2 - q * S * eq * Nm1;
+  const rho = call ? K * T * er * Nd2 : -K * T * er * Nm2;
+  const vanna = -eq * pd1 * d2 / v;
+  const volga = vega * d1 * d2 / v;
+  const charmCommon = eq * pd1 * (2 * (r - q) * T - d2 * vsT) / (2 * T * vsT);
+  const charm = call ? q * eq * Nd1 - charmCommon : -q * eq * Nm1 - charmCommon;
+  const speed = -gamma / S * (d1 / vsT + 1);
+  const zomma = gamma * (d1 * d2 - 1) / v;
+  const color = eq * pd1 / (2 * S * T * vsT) * (2 * q * T + 1 + (2 * (r - q) * T - d2 * vsT) / vsT * d1);
+  const veta = S * eq * pd1 * sT * (q + (r - q) * d1 / vsT - (1 + d1 * d2) / (2 * T));
+  const ultima = -vega / (v * v) * (d1 * d2 * (1 - d1 * d2) + d1 * d1 + d2 * d2);
+  return { price, delta, gamma, vega, theta, rho, vanna, volga, charm, speed, zomma, color, veta, ultima, d1, d2, Nd1, Nd2 };
+}
+
+// Shift one input of p by h. "t" is calendar time, so it moves τ the other way.
+function bump(p, v, h) {
+  const o = Object.assign({}, p);
+  if (v === "t") o.tau = p.tau - h; else o[v] = p[v] + h;
+  return o;
+}
+function stepFor(p, v, k) {
+  if (v === "S") return p.S * k;
+  if (v === "sigma") return p.sigma * k;
+  if (v === "t") return p.tau * k;
+  return k; // r, q: absolute
+}
+// Nested central differences: ∂ⁿf/∂v1…∂vn.
+function numD(f, p, vars, k) {
+  if (!vars.length) return f(p);
+  const v = vars[0], rest = vars.slice(1), h = stepFor(p, v, k);
+  return (numD(f, bump(p, v, h), rest, k) - numD(f, bump(p, v, -h), rest, k)) / (2 * h);
+}
+const STEP_BY_ORDER = [0, 1e-5, 2e-4, 2e-3];
+// ==/MATH==
+
+/* ---------------- state ---------------- */
+const DEFAULTS = { S: 100, K: 100, sigma: 0.25, tau: 0.5, r: 0.04, q: 0.0, type: "call" };
+const P = Object.assign({}, DEFAULTS);
+const SDOM = [40, 160];
+const UI = { h: 1, taylor: true, secant: true, plane: true, quantity: "price", yaxis: "sigma", greek: "vanna",
+  yaw: -0.85, pitch: 0.5, hoverSlope: null, hoverT1: null, heatHover: null,
+  dS: 5, dVol: 2, dDays: 7, dBp: 0 };
+
+const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+const CTRL = [
+  { k: "S", sym: "S", label: "stock price", min: 40, max: 160, step: 0.1, fmt: v => v.toFixed(2) },
+  { k: "K", sym: "K", label: "strike price", min: 70, max: 130, step: 0.5, fmt: v => v.toFixed(1) },
+  { k: "sigma", sym: "σ", label: "volatility", min: 0.05, max: 1, step: 0.005, fmt: v => pct(v, 1) },
+  { k: "tau", sym: "τ", label: "time left", min: 0.02, max: 2, step: 0.005, fmt: v => v.toFixed(3) + "y · " + Math.round(v * 365) + "d" },
+  { k: "r", sym: "r", label: "interest rate", min: -0.02, max: 0.1, step: 0.0025, fmt: v => pct(v, 2) },
+  { k: "q", sym: "q", label: "dividend yield", min: 0, max: 0.08, step: 0.0025, fmt: v => pct(v, 2) },
+];
+const CTRL_BY = Object.fromEntries(CTRL.map(c => [c.k, c]));
+
+/* ---------------- formatting ---------------- */
+function fmt(v, sig = 4) {
+  if (!isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  let s;
+  if (a < 1e-4 || a >= 1e6) {
+    s = v.toExponential(2).replace(/e([+-])(\d+)/, (m, sg, ex) => "e" + (sg === "-" ? "−" : "") + ex);
+  } else {
+    const d = Math.min(7, Math.max(0, sig - 1 - Math.floor(Math.log10(a))));
+    s = v.toFixed(d);
+  }
+  return s.replace("-", "−");
+}
+const fmtS = (v, sig) => (v > 0 ? "+" : "") + fmt(v, sig);
+function tickFmt(v) {
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  let s = a >= 100 ? v.toFixed(0) : a >= 1 ? +v.toFixed(2) + "" : +v.toPrecision(3) + "";
+  if (a < 1e-3) s = v.toExponential(0);
+  return s.replace("-", "−");
+}
+function niceTicks(a, b, n = 5) {
+  const span = b - a; if (!(span > 0)) return [a];
+  const step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0))), err = step0 / mag;
+  const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag;
+  const out = [];
+  for (let v = Math.ceil(a / step) * step; v <= b + step * 1e-9; v += step) out.push(+v.toPrecision(12));
+  return out;
+}
+
+/* ---------------- theme ---------------- */
+let C = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = n => cs.getPropertyValue(n).trim();
+  C = { surface: g("--surface"), ink: g("--ink"), ink2: g("--ink-2"), muted: g("--muted"), grid: g("--grid"), axis: g("--axis"),
+    delta: g("--c-delta"), gamma: g("--c-gamma"), vega: g("--c-vega"), theta: g("--c-theta"), rho: g("--c-rho"),
+    pos: g("--div-pos"), neg: g("--div-neg"), mid: g("--div-mid"), lo: g("--mesh-lo"), hi: g("--mesh-hi") };
+  C.dir1 = C.delta; C.dir2 = C.gamma;
+}
+function rgb(hex) {
+  const h = hex.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+const css = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+function alpha(hex, a) { return css(rgb(hex), a); }
+
+/* ---------------- 2D plot helper ---------------- */
+function setupCanvas(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+const MONO = '11px "IBM Plex Mono", ui-monospace, monospace';
+class Plot {
+  constructor(cv, pad) { this.cv = cv; this.pad = Object.assign({ l: 54, r: 14, t: 22, b: 26 }, pad || {}); this.xr = [0, 1]; this.yr = [0, 1]; }
+  begin(xr, yr) {
+    const { ctx, w, h } = setupCanvas(this.cv);
+    this.ctx = ctx; this.w = w; this.h = h; this.xr = xr; this.yr = yr;
+    this.L = this.pad.l; this.R = w - this.pad.r; this.T = this.pad.t; this.B = h - this.pad.b;
+    return this;
+  }
+  X(v) { return this.L + (v - this.xr[0]) / (this.xr[1] - this.xr[0]) * (this.R - this.L); }
+  Y(v) { return this.B - (v - this.yr[0]) / (this.yr[1] - this.yr[0]) * (this.B - this.T); }
+  invX(px) { return this.xr[0] + (px - this.L) / (this.R - this.L) * (this.xr[1] - this.xr[0]); }
+  invY(py) { return this.yr[0] + (this.B - py) / (this.B - this.T) * (this.yr[1] - this.yr[0]); }
+  axes(o = {}) {
+    const ctx = this.ctx; ctx.save();
+    ctx.font = MONO; ctx.lineWidth = 1;
+    const yt = o.yticks || niceTicks(this.yr[0], this.yr[1], o.ny || 4);
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (const v of yt) {
+      const y = Math.round(this.Y(v)) + 0.5;
+      if (y < this.T - 1 || y > this.B + 1) continue;
+      ctx.strokeStyle = v === 0 && !o.noZero ? C.axis : C.grid;
+      ctx.beginPath(); ctx.moveTo(this.L, y); ctx.lineTo(this.R, y); ctx.stroke();
+      ctx.fillStyle = C.muted; ctx.fillText((o.yfmt || tickFmt)(v), this.L - 7, y);
+    }
+    if (!o.noX) {
+      const xt = o.xticks || niceTicks(this.xr[0], this.xr[1], o.nx || 6);
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (const v of xt) {
+        const x = Math.round(this.X(v)) + 0.5;
+        if (x < this.L - 1 || x > this.R + 1) continue;
+        if (o.xgrid) { ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x, this.T); ctx.lineTo(x, this.B); ctx.stroke(); }
+        ctx.fillStyle = C.muted; ctx.fillText((o.xfmt || tickFmt)(v), x, this.B + 7);
+      }
+    }
+    ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(this.L, this.B + 0.5); ctx.lineTo(this.R, this.B + 0.5); ctx.stroke();
+    if (o.ylabel) { ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = C.ink2; ctx.fillText(o.ylabel, this.L, this.T - 8); }
+    if (o.xlabel) { ctx.textAlign = "right"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = C.ink2; ctx.fillText(o.xlabel, this.R, this.T - 8); }
+    ctx.restore();
+  }
+  clip() { const c = this.ctx; c.save(); c.beginPath(); c.rect(this.L, this.T - 2, this.R - this.L, this.B - this.T + 4); c.clip(); }
+  unclip() { this.ctx.restore(); }
+  path(xs, ys, color, width = 2, dash) {
+    const c = this.ctx; c.save(); c.strokeStyle = color; c.lineWidth = width; c.lineJoin = "round"; c.lineCap = "round";
+    if (dash) c.setLineDash(dash);
+    c.beginPath(); let pen = false;
+    for (let i = 0; i < xs.length; i++) {
+      const y = ys[i];
+      if (!isFinite(y)) { pen = false; continue; }
+      const X = this.X(xs[i]), Y = Math.max(-1e4, Math.min(1e4, this.Y(y)));
+      if (pen) c.lineTo(X, Y); else { c.moveTo(X, Y); pen = true; }
+    }
+    c.stroke(); c.restore();
+  }
+  fn(f, x0, x1, color, width, dash, n = 160) {
+    const xs = [], ys = [];
+    for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n; xs.push(x); ys.push(f(x)); }
+    this.path(xs, ys, color, width, dash);
+  }
+  vline(x, color, dash, width = 1) {
+    const c = this.ctx; c.save(); c.strokeStyle = color; c.lineWidth = width; if (dash) c.setLineDash(dash);
+    const X = Math.round(this.X(x)) + 0.5; c.beginPath(); c.moveTo(X, this.T); c.lineTo(X, this.B); c.stroke(); c.restore();
+  }
+  dot(x, y, color, r = 4.5) {
+    const c = this.ctx; const X = this.X(x), Y = this.Y(y);
+    c.save(); c.beginPath(); c.arc(X, Y, r + 2, 0, 7); c.fillStyle = C.surface; c.fill();
+    c.beginPath(); c.arc(X, Y, r, 0, 7); c.fillStyle = color; c.fill(); c.restore();
+  }
+  // text with surface halo, positioned in pixels relative to a data point
+  tag(x, y, text, dx = 8, dy = -10, align = "left") {
+    const c = this.ctx; c.save(); c.font = '12px "IBM Plex Mono", ui-monospace, monospace';
+    let X = this.X(x) + dx, Y = this.Y(y) + dy;
+    const w = c.measureText(text).width;
+    if (align === "left" && X + w > this.R) { X = this.X(x) - dx; align = "right"; }
+    if (align === "right" && X - w < this.L) { X = this.X(x) + dx; align = "left"; }
+    Y = Math.max(this.T + 8, Math.min(this.B - 8, Y));
+    c.textAlign = align; c.textBaseline = "middle";
+    c.lineWidth = 4; c.strokeStyle = C.surface; c.lineJoin = "round"; c.strokeText(text, X, Y);
+    c.fillStyle = C.ink; c.fillText(text, X, Y); c.restore();
+  }
+}
+
+/* ---------------- tooltip ---------------- */
+const tip = document.getElementById("tip");
+function showTip(e, head, rows) {
+  tip.innerHTML = (head ? `<div class="th">${head}</div>` : "") + rows.map(r =>
+    `<div class="tr"><span class="tl">${r.c ? `<i class="sw" style="--c:${r.c}"></i>` : ""}${r.l}</span><span>${r.v}</span></div>`).join("");
+  tip.hidden = false;
+  const pad = 14, rc = tip.getBoundingClientRect();
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + rc.width > innerWidth - 8) x = e.clientX - rc.width - pad;
+  if (y + rc.height > innerHeight - 8) y = e.clientY - rc.height - pad;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.hidden = true; }
+
+/* ---------------- render loop ---------------- */
+let raf = 0;
+function invalidate() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); }); }
+
+function setParam(k, v) {
+  const c = CTRL_BY[k];
+  if (c) v = Math.max(c.min, Math.min(c.max, v));
+  P[k] = v;
+  syncControls();
+  invalidate();
+}
+
+/* ---------------- contract panel ---------------- */
+const ctlBox = document.getElementById("ctls");
+ctlBox.innerHTML = CTRL.map(c => `
+  <div class="ctl">
+    <div class="ctl-row"><label for="in-${c.k}"><b>${c.sym}</b>${c.label}</label><output id="out-${c.k}"></output></div>
+    <input type="range" id="in-${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${P[c.k]}">
+  </div>`).join("");
+for (const c of CTRL) {
+  document.getElementById("in-" + c.k).addEventListener("input", e => { P[c.k] = +e.target.value; syncControls(); invalidate(); });
+}
+document.querySelectorAll("#panel .seg button").forEach(b => b.addEventListener("click", () => { P.type = b.dataset.type; syncControls(); invalidate(); }));
+document.getElementById("resetBtn").addEventListener("click", () => { Object.assign(P, DEFAULTS); syncControls(); invalidate(); });
+
+function syncControls() {
+  for (const c of CTRL) {
+    const inp = document.getElementById("in-" + c.k);
+    if (+inp.value !== P[c.k]) inp.value = P[c.k];
+    document.getElementById("out-" + c.k).textContent = c.fmt(P[c.k]);
+  }
+  document.querySelectorAll("#panel .seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.type === P.type));
+  document.getElementById("sumText").textContent =
+    `S ${P.S.toFixed(1)} · K ${P.K.toFixed(0)} · σ ${pct(P.sigma, 0)} · τ ${P.tau.toFixed(2)}y · ${P.type}`;
+}
+
+// The panel is a <details>: always open on wide screens, collapsible on narrow ones.
+const panel = document.getElementById("panel");
+const wideMQ = matchMedia("(min-width: 961px)");
+function syncPanel() { if (wideMQ.matches) panel.open = true; }
+wideMQ.addEventListener("change", syncPanel);
+panel.addEventListener("toggle", () => { if (wideMQ.matches && !panel.open) panel.open = true; });
+if (!wideMQ.matches) panel.open = false;
+
+function renderReadout(g) {
+  const rows = [
+    ["V", "price", "var(--ink)", fmt(g.price, 5), ""],
+    ["Δ", "∂V/∂S", "var(--c-delta)", fmt(g.delta), ""],
+    ["Γ", "∂²V/∂S²", "var(--c-gamma)", fmt(g.gamma), ""],
+    ["ν", "∂V/∂σ", "var(--c-vega)", fmt(g.vega), fmt(g.vega / 100, 3) + "/pt"],
+    ["Θ", "∂V/∂t", "var(--c-theta)", fmt(g.theta), fmt(g.theta / 365, 3) + "/d"],
+    ["ρ", "∂V/∂r", "var(--c-rho)", fmt(g.rho), fmt(g.rho / 100, 3) + "/%"],
+  ];
+  document.getElementById("readout").innerHTML = rows.map(r =>
+    `<span class="sym"><i class="sw" style="--c:${r[2]}"></i>${r[0]}</span><span class="lbl mono" style="font-size:11.5px">${r[1]}</span><span class="num">${r[3]}</span>
+     ${r[4] ? `<span></span><span></span><span class="num lbl" style="font-size:11.5px">${r[4]}</span>` : ""}`).join("") +
+    `<span class="sym" style="font-weight:400">d₁</span><span></span><span class="num">${fmt(g.d1)}</span>
+     <span class="sym" style="font-weight:400">d₂</span><span></span><span class="num">${fmt(g.d2)}</span>`;
+}
+
+/* ---------------- §1 cards ---------------- */
+const money = v => (v < 0 ? "−$" : "+$") + Math.abs(v).toFixed(Math.abs(v) < 0.1 ? 4 : 2);
+const CARDS = [
+  { k: "delta", g: "Δ", nm: "Delta", q: "The stock rises $1. How much does the option move?",
+    def: "∂V/∂S", ans: g => [money(g.delta), "per $1 of stock"] },
+  { k: "gamma", g: "Γ", nm: "Gamma", q: "The stock rises $1. How much does delta change?",
+    def: "∂²V/∂S²", ans: g => [`${g.delta.toFixed(3)} → ${(g.delta + g.gamma).toFixed(3)}`, "delta before → after"] },
+  { k: "vega", g: "ν", nm: "Vega", q: "Volatility rises 1 point. How much does the option move?",
+    def: "∂V/∂σ", ans: g => [money(g.vega / 100), `per vol point (${pct(P.sigma, 0)} → ${pct(P.sigma + 0.01, 0)})`] },
+  { k: "theta", g: "Θ", nm: "Theta", q: "One day passes and nothing else happens. How much does the option move?",
+    def: "∂V/∂t", ans: g => [money(g.theta / 365), "per day"] },
+  { k: "rho", g: "ρ", nm: "Rho", q: "Interest rates rise 1%. How much does the option move?",
+    def: "∂V/∂r", ans: g => [money(g.rho / 100), "per 1% of rates"] },
+];
+document.getElementById("cards").innerHTML = CARDS.map(c => `
+  <div class="card">
+    <div class="top"><span class="g">${c.g}</span><span class="nm">${c.nm}</span><i class="sw" style="--c:var(--c-${c.k});width:10px;height:10px"></i></div>
+    <div class="q">${c.q}</div>
+    <div class="ans" id="card-${c.k}">—</div>
+    <div class="def"><span class="mono">${c.def}</span><span class="num" id="cardv-${c.k}"></span></div>
+  </div>`).join("");
+
+/* ---------------- §2 slope stack ---------------- */
+const plots = {
+  V: new Plot(document.getElementById("cvV"), { b: 8 }),
+  D: new Plot(document.getElementById("cvD"), { b: 8 }),
+  G: new Plot(document.getElementById("cvG")),
+  E: new Plot(document.getElementById("cvE"), { l: 50 }),
+  S1: new Plot(document.getElementById("cvS1"), { l: 50 }),
+  S2: new Plot(document.getElementById("cvS2"), { l: 50 }),
+  T1: new Plot(document.getElementById("cvT1"), { l: 58 }),
+  H: new Plot(document.getElementById("cvH"), { l: 44, t: 8 }),
+};
+const payoff = S => P.type === "put" ? Math.max(P.K - S, 0) : Math.max(S - P.K, 0);
+const priceAt = S => bs(Object.assign({}, P, { S })).price;
+
+function renderSlope() {
+  const g0 = bs(P), S0 = P.S, h = UI.h;
+  const n = 241, xs = [], Vs = [], Ds = [], Gs = [], Pay = [];
+  for (let i = 0; i < n; i++) {
+    const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / (n - 1);
+    const g = bs(Object.assign({}, P, { S }));
+    xs.push(S); Vs.push(g.price); Ds.push(g.delta); Gs.push(g.gamma); Pay.push(payoff(S));
+  }
+  // --- V(S)
+  let lo = Math.min(0, ...Vs, ...Pay), hi = Math.max(...Vs, ...Pay);
+  hi += (hi - lo) * 0.06; lo -= (hi - lo) * 0.04;
+  const pv = plots.V.begin(SDOM, [lo, hi]);
+  pv.axes({ ylabel: "option value V", xlabel: "", noX: true, xgrid: false });
+  pv.clip();
+  pv.vline(P.K, C.grid);
+  pv.path(xs, Pay, C.muted, 1.5, [1.5, 4]);
+  pv.path(xs, Vs, C.ink, 2);
+  const W = 32;
+  if (UI.taylor) pv.fn(S => g0.price + g0.delta * (S - S0) + 0.5 * g0.gamma * (S - S0) ** 2, S0 - W * 1.3, S0 + W * 1.3, C.gamma, 2, [6, 4]);
+  if (UI.secant) {
+    const Va = priceAt(S0 - h), Vb = priceAt(S0 + h), m = (Vb - Va) / (2 * h), mid = (Va + Vb) / 2;
+    pv.fn(S => mid + m * (S - S0), S0 - Math.max(W, h + 6), S0 + Math.max(W, h + 6), C.ink2, 1.25, [4, 3], 2);
+    if (h > 0.4) { pv.dot(S0 - h, Va, C.ink2, 3.2); pv.dot(S0 + h, Vb, C.ink2, 3.2); }
+  }
+  pv.fn(S => g0.price + g0.delta * (S - S0), S0 - W, S0 + W, C.delta, 2, null, 2);
+  if (UI.hoverSlope != null) pv.vline(UI.hoverSlope, C.muted, [3, 3]);
+  pv.vline(S0, C.ink2);
+  pv.dot(S0, g0.price, C.ink);
+  pv.unclip();
+  pv.tag(S0, g0.price, `slope = Δ = ${fmt(g0.delta)}`, 12, -16);
+  { const c = pv.ctx; c.save(); c.font = MONO; c.fillStyle = C.muted; c.textAlign = "center"; c.fillText("K", pv.X(P.K), pv.B - 4); c.restore(); }
+
+  // --- Δ(S)
+  const dyr = P.type === "put" ? [-1.05, 0.05] : [-0.05, 1.05];
+  const pd = plots.D.begin(SDOM, dyr);
+  pd.axes({ ylabel: "Δ = steepness of the curve above", noX: true, yticks: P.type === "put" ? [-1, -0.5, 0] : [0, 0.5, 1] });
+  pd.clip();
+  pd.vline(P.K, C.grid);
+  pd.path(xs, Ds, C.delta, 2);
+  pd.fn(S => g0.delta + g0.gamma * (S - S0), S0 - W * 0.8, S0 + W * 0.8, C.gamma, 2, null, 2);
+  if (UI.hoverSlope != null) pd.vline(UI.hoverSlope, C.muted, [3, 3]);
+  pd.vline(S0, C.ink2);
+  pd.dot(S0, g0.delta, C.delta);
+  pd.unclip();
+  pd.tag(S0, g0.delta, `height = Δ, slope = Γ = ${fmt(g0.gamma)}`, 12, P.type === "put" ? 16 : -16);
+
+  // --- Γ(S)
+  const gmax = Math.max(...Gs) * 1.18 || 1;
+  const pg = plots.G.begin(SDOM, [0, gmax]);
+  pg.axes({ ylabel: "Γ = steepness of Δ", ny: 3 });
+  pg.clip();
+  pg.vline(P.K, C.grid);
+  pg.path(xs, Gs, C.gamma, 2);
+  if (UI.hoverSlope != null) pg.vline(UI.hoverSlope, C.muted, [3, 3]);
+  pg.vline(S0, C.ink2);
+  pg.dot(S0, g0.gamma, C.gamma);
+  pg.unclip();
+  pg.tag(S0, g0.gamma, `Γ = ${fmt(g0.gamma)}`, 12, -14);
+  { const c = pg.ctx; c.save(); c.font = MONO; c.fillStyle = C.ink2; c.textAlign = "right"; c.fillText("stock price S →", pg.R, pg.B - 6); c.restore(); }
+
+  // --- finite difference table
+  const V0 = g0.price, Vp = priceAt(S0 + h), Vm = priceAt(S0 - h);
+  const fwd = (Vp - V0) / h, ctr = (Vp - Vm) / (2 * h), sec = (Vp - 2 * V0 + Vm) / (h * h);
+  document.getElementById("hOut").textContent = h >= 0.01 ? fmt(h, 3) : h.toExponential(1).replace("e-", "e−");
+  const row = (name, val, ref, cls) => `<tr class="${cls || ""}"><td>${name}</td><td class="num">${fmt(val, 7)}</td><td class="num">${ref == null ? "" : fmt(Math.abs(val - ref), 2)}</td></tr>`;
+  document.getElementById("fdBody").innerHTML =
+    row("Exact Δ (formula)", g0.delta, null, "em") +
+    row("Rise over run, one way", fwd, g0.delta) +
+    row("Rise over run, both ways", ctr, g0.delta) +
+    row("Exact Γ (formula)", g0.gamma, null, "em") +
+    row("Bend measured with steps", sec, g0.gamma);
+
+  // --- plain-English summary
+  const moneyness = Math.abs(S0 - P.K) < 0.03 * P.K ? "near the strike" : ((S0 > P.K) === (P.type !== "put") ? "in the money" : "out of the money");
+  document.getElementById("slopeSay").innerHTML =
+    `At a stock price of <b>$${S0.toFixed(2)}</b> (${moneyness}), the curve climbs <b>${fmt(Math.abs(g0.delta), 3)}</b> for every $1, so <b>Δ = ${fmt(g0.delta, 3)}</b>. ` +
+    `One dollar further, the slope has changed by <b>${fmt(g0.gamma, 3)}</b>: that is <b>Γ</b>. ` +
+    (P.type === "put" ? "Far to the left the put moves almost −1 for 1 with the stock (Δ ≈ −1); far to the right it is flat (Δ ≈ 0)."
+                      : "Far to the left the curve is flat (Δ ≈ 0); far to the right it rises 1 for 1 with the stock (Δ ≈ 1).");
+
+  // --- error vs h
+  const lx = [], ef = [], ec = [];
+  for (let i = 0; i <= 220; i++) {
+    const L = -10 + 11.5 * i / 220, hh = Math.pow(10, L);
+    const a = priceAt(S0 + hh), b = priceAt(S0 - hh);
+    lx.push(L);
+    ef.push(Math.log10(Math.max(1e-17, Math.abs((a - V0) / hh - g0.delta))));
+    ec.push(Math.log10(Math.max(1e-17, Math.abs((a - b) / (2 * hh) - g0.delta))));
+  }
+  const pe = plots.E.begin([-10, 1.5], [-16, 1]);
+  const pow = v => "1e" + (v < 0 ? "−" + (-v) : v);
+  pe.axes({ ylabel: "|error| in Δ", xlabel: "h", yticks: [-15, -12, -9, -6, -3, 0], yfmt: pow, xticks: [-10, -8, -6, -4, -2, 0], xfmt: pow, xgrid: true, noZero: true });
+  pe.clip();
+  pe.path(lx, ef, C.ink2, 1.75, [5, 3]);
+  pe.path(lx, ec, C.ink, 2);
+  pe.vline(Math.log10(h), C.muted, [3, 3]);
+  const iCur = Math.round((Math.log10(h) + 10) / 11.5 * 220);
+  pe.dot(lx[iCur], ec[iCur], C.ink, 4);
+  pe.unclip();
+}
+
+function bindHorizontal(cv, getPlot, onSet, onHover) {
+  let drag = false;
+  cv.style.cursor = "ew-resize";
+  cv.addEventListener("pointerdown", e => { drag = true; cv.setPointerCapture(e.pointerId); onSet(getPlot().invX(e.offsetX)); hideTip(); });
+  cv.addEventListener("pointermove", e => {
+    const x = getPlot().invX(e.offsetX);
+    if (drag) onSet(x); else if (onHover) onHover(x, e);
+  });
+  const end = () => { drag = false; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  cv.addEventListener("pointerleave", () => { if (onHover) onHover(null); });
+}
+const slopeHover = (x, e) => {
+  if (x == null || x < SDOM[0] || x > SDOM[1]) { UI.hoverSlope = null; hideTip(); invalidate(); return; }
+  UI.hoverSlope = x;
+  const g = bs(Object.assign({}, P, { S: x }));
+  showTip(e, `S = ${x.toFixed(2)}`, [
+    { c: C.ink, l: "V", v: fmt(g.price) }, { c: C.delta, l: "Δ", v: fmt(g.delta) }, { c: C.gamma, l: "Γ", v: fmt(g.gamma) }]);
+  invalidate();
+};
+for (const key of ["V", "D", "G"]) bindHorizontal(plots[key].cv, () => plots[key], x => setParam("S", Math.round(x * 10) / 10), slopeHover);
+document.getElementById("hIn").addEventListener("input", e => { UI.h = Math.pow(10, +e.target.value); invalidate(); });
+document.getElementById("tgTaylor").addEventListener("change", e => { UI.taylor = e.target.checked; invalidate(); });
+document.getElementById("tgSecant").addEventListener("change", e => { UI.secant = e.target.checked; invalidate(); });
+{
+  let drag = false; const cv = plots.E.cv; cv.style.cursor = "ew-resize";
+  const set = e => { const L = Math.max(-10, Math.min(1.3, plots.E.invX(e.offsetX))); UI.h = Math.pow(10, L); document.getElementById("hIn").value = L; invalidate(); };
+  cv.addEventListener("pointerdown", e => { drag = true; cv.setPointerCapture(e.pointerId); set(e); });
+  cv.addEventListener("pointermove", e => { if (drag) set(e); });
+  cv.addEventListener("pointerup", () => drag = false);
+}
+
+/* ---------------- §3 surface ---------------- */
+const QUANT = {
+  price: { lab: "V", name: "price", color: "ink" },
+  delta: { lab: "Δ", name: "delta", color: "delta" },
+  gamma: { lab: "Γ", name: "gamma", color: "gamma" },
+  vega: { lab: "ν", name: "vega", color: "vega" },
+  theta: { lab: "Θ", name: "theta", color: "theta" },
+};
+const YAX = {
+  sigma: { lab: "σ", name: "volatility", min: 0.05, max: 1.0, fmt: v => pct(v, 0) },
+  tau: { lab: "τ", name: "time left", min: 0.02, max: 2.0, fmt: v => v.toFixed(2) },
+  r: { lab: "r", name: "interest rate", min: -0.02, max: 0.1, fmt: v => pct(v, 1) },
+};
+const PNAME = {
+  price: { S: "delta (Δ)", sigma: "vega (ν)", tau: "minus theta (−Θ)", r: "rho (ρ)" },
+  delta: { S: "gamma (Γ)", sigma: "vanna", tau: "−charm", r: "∂Δ/∂r" },
+  gamma: { S: "speed", sigma: "zomma", tau: "−color", r: "∂Γ/∂r" },
+  vega: { S: "vanna", sigma: "volga", tau: "−veta", r: "∂ν/∂r" },
+  theta: { S: "charm (∂Θ/∂S = ∂Δ/∂t)", sigma: "veta (∂Θ/∂σ = ∂ν/∂t)", tau: "∂Θ/∂τ", r: "∂Θ/∂r" },
+};
+const SEGQ = document.getElementById("segQ"), SEGY = document.getElementById("segY");
+SEGQ.innerHTML = Object.entries(QUANT).map(([k, q]) => `<button type="button" data-q="${k}" aria-pressed="${k === UI.quantity}">${q.lab} ${q.name}</button>`).join("");
+SEGY.innerHTML = Object.entries(YAX).map(([k, q]) => `<button type="button" data-y="${k}" aria-pressed="${k === UI.yaxis}">${q.name}</button>`).join("");
+SEGQ.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; UI.quantity = b.dataset.q; SEGQ.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); invalidate(); });
+SEGY.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; UI.yaxis = b.dataset.y; SEGY.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); invalidate(); });
+document.getElementById("tgPlane").addEventListener("change", e => { UI.plane = e.target.checked; invalidate(); });
+document.getElementById("view3d").addEventListener("click", () => { UI.yaw = -0.85; UI.pitch = 0.5; invalidate(); });
+
+const cv3 = document.getElementById("cv3");
+{
+  let drag = null;
+  cv3.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY }; cv3.setPointerCapture(e.pointerId); });
+  cv3.addEventListener("pointermove", e => {
+    if (!drag) return;
+    UI.yaw += (e.clientX - drag.x) * 0.008;
+    UI.pitch = Math.max(0.05, Math.min(1.45, UI.pitch + (e.clientY - drag.y) * 0.006));
+    drag = { x: e.clientX, y: e.clientY }; invalidate();
+  });
+  const end = () => { drag = null; };
+  cv3.addEventListener("pointerup", end); cv3.addEventListener("pointercancel", end);
+}
+
+function qfun(q) { return p => bs(p)[q]; }
+function partial(f, p, v) {
+  const h = v === "S" ? 1e-2 : v === "r" ? 1e-5 : 1e-4;
+  const a = Object.assign({}, p), b = Object.assign({}, p);
+  a[v] += h; b[v] -= h;
+  return (f(a) - f(b)) / (2 * h);
+}
+
+function render3D() {
+  const { ctx, w, h } = setupCanvas(cv3);
+  const q = UI.quantity, ax = UI.yaxis, Y = YAX[ax], f = qfun(q);
+  const N = 36, vals = [];
+  let zmin = Infinity, zmax = -Infinity;
+  for (let i = 0; i < N; i++) {
+    const row = [];
+    for (let j = 0; j < N; j++) {
+      const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / (N - 1), y = Y.min + (Y.max - Y.min) * j / (N - 1);
+      const p = Object.assign({}, P, { S }); p[ax] = y;
+      const z = f(p); row.push(z);
+      if (isFinite(z)) { zmin = Math.min(zmin, z); zmax = Math.max(zmax, z); }
+    }
+    vals.push(row);
+  }
+  const p0 = Object.assign({}, P), y0 = P[ax], z0 = f(p0);
+  zmin = Math.min(zmin, z0); zmax = Math.max(zmax, z0);
+  if (zmax - zmin < 1e-12) { zmax += 1; zmin -= 1; }
+  const ZH = 0.62;
+  const nx = S => (S - SDOM[0]) / (SDOM[1] - SDOM[0]) * 2 - 1;
+  const ny = y => (y - Y.min) / (Y.max - Y.min) * 2 - 1;
+  const nz = z => (z - zmin) / (zmax - zmin) * 2 * ZH - ZH;
+  const cy = Math.cos(UI.yaw), sy = Math.sin(UI.yaw), cp = Math.cos(UI.pitch), sp = Math.sin(UI.pitch);
+  const scale = Math.min(w * 0.36, h * 0.5), ox = w / 2, oy = h * 0.53;
+  const proj = (x, y, z) => {
+    const X = x * cy - y * sy, Yd = x * sy + y * cy;
+    return { x: ox + X * scale, y: oy - (z * cp + Yd * sp) * scale, d: Yd * cp - z * sp };
+  };
+  // floor + back walls (hairlines)
+  const zf = -ZH;
+  ctx.lineWidth = 1;
+  const line3 = (a, b, color, width = 1, dash) => {
+    const A = proj(...a), B = proj(...b);
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width; if (dash) ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); ctx.restore();
+  };
+  for (let k = 0; k <= 4; k++) {
+    const t = -1 + k / 2;
+    line3([t, -1, zf], [t, 1, zf], C.grid); line3([-1, t, zf], [1, t, zf], C.grid);
+  }
+  // pick the far corner for the vertical axis
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const far = corners.reduce((a, c) => proj(c[0], c[1], 0).d > proj(a[0], a[1], 0).d ? c : a);
+  line3([far[0], far[1], zf], [far[0], far[1], ZH], C.axis);
+  // surface quads, far to near
+  const pts = [];
+  for (let i = 0; i < N; i++) { pts.push([]); for (let j = 0; j < N; j++) {
+    const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / (N - 1), y = Y.min + (Y.max - Y.min) * j / (N - 1);
+    const z = isFinite(vals[i][j]) ? nz(vals[i][j]) : 0;
+    pts[i].push({ v: [nx(S), ny(y), z], p: proj(nx(S), ny(y), z) });
+  } }
+  const quads = [];
+  for (let i = 0; i < N - 1; i++) for (let j = 0; j < N - 1; j++) {
+    const a = pts[i][j], b = pts[i + 1][j], c = pts[i + 1][j + 1], d = pts[i][j + 1];
+    quads.push({ a, b, c, d, depth: (a.p.d + b.p.d + c.p.d + d.p.d) / 4, zt: (a.v[2] + b.v[2] + c.v[2] + d.v[2]) / 4 });
+  }
+  quads.sort((u, v) => v.depth - u.depth);
+  const lo = rgb(C.lo), hi = rgb(C.hi);
+  const L = [0.35, -0.55, 0.76];
+  for (const qd of quads) {
+    const u = [qd.c.v[0] - qd.a.v[0], qd.c.v[1] - qd.a.v[1], qd.c.v[2] - qd.a.v[2]];
+    const v = [qd.d.v[0] - qd.b.v[0], qd.d.v[1] - qd.b.v[1], qd.d.v[2] - qd.b.v[2]];
+    let nn = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const len = Math.hypot(...nn) || 1; nn = nn.map(x => x / len);
+    const lam = Math.abs(nn[0] * L[0] + nn[1] * L[1] + nn[2] * L[2]);
+    const t = (qd.zt + ZH) / (2 * ZH);
+    const base = mix(lo, hi, 0.15 + 0.7 * t);
+    const shade = 0.78 + 0.3 * lam;
+    const col = [Math.min(255, base[0] * shade), Math.min(255, base[1] * shade), Math.min(255, base[2] * shade)];
+    ctx.beginPath(); ctx.moveTo(qd.a.p.x, qd.a.p.y); ctx.lineTo(qd.b.p.x, qd.b.p.y); ctx.lineTo(qd.c.p.x, qd.c.p.y); ctx.lineTo(qd.d.p.x, qd.d.p.y); ctx.closePath();
+    ctx.fillStyle = css(col, 0.94); ctx.fill();
+    ctx.strokeStyle = css(mix(col, rgb(C.surface), 0.35), 0.55); ctx.lineWidth = 0.6; ctx.stroke();
+  }
+  // slices through the point
+  const X0 = nx(P.S), Y0 = ny(y0), Z0 = nz(z0);
+  const poly = (arr, color, width) => {
+    ctx.save(); ctx.strokeStyle = C.surface; ctx.lineWidth = width + 3; ctx.lineJoin = "round";
+    ctx.beginPath(); arr.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); ctx.restore();
+  };
+  const sl1 = [], sl2 = [];
+  for (let i = 0; i <= 80; i++) {
+    const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / 80;
+    sl1.push(proj(nx(S), Y0, nz(f(Object.assign({}, P, { S })))));
+    const y = Y.min + (Y.max - Y.min) * i / 80; const p = Object.assign({}, P); p[ax] = y;
+    sl2.push(proj(X0, ny(y), nz(f(p))));
+  }
+  // drop lines to the floor
+  line3([X0, Y0, zf], [X0, Y0, Z0], C.ink2, 1, [3, 3]);
+  line3([X0, -1, zf], [X0, 1, zf], alpha(C.dir1, 0.5), 1, [2, 3]);
+  line3([-1, Y0, zf], [1, Y0, zf], alpha(C.dir2, 0.5), 1, [2, 3]);
+  poly(sl1, C.dir1, 2.25); poly(sl2, C.dir2, 2.25);
+  // tangent lines & plane
+  const dS = partial(f, P, "S"), dY = partial(f, P, ax);
+  const kx = (SDOM[1] - SDOM[0]) / 2, ky = (Y.max - Y.min) / 2, kz = 2 * ZH / (zmax - zmin);
+  const tu = [1, 0, dS * kx * kz], tv = [0, 1, dY * ky * kz];
+  const a = 0.32;
+  if (UI.plane) {
+    const c4 = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([s, t]) => proj(X0 + a * (s * tu[0] + t * tv[0]), Y0 + a * (s * tu[1] + t * tv[1]), Z0 + a * (s * tu[2] + t * tv[2])));
+    ctx.beginPath(); c4.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.closePath();
+    ctx.fillStyle = alpha(C.ink, 0.13); ctx.fill(); ctx.strokeStyle = alpha(C.ink, 0.45); ctx.lineWidth = 1; ctx.stroke();
+  }
+  const seg = (t, color) => {
+    const n = Math.hypot(t[0], t[1], t[2]), s = 0.5 / n;
+    const A = proj(X0 - t[0] * s, Y0 - t[1] * s, Z0 - t[2] * s), B = proj(X0 + t[0] * s, Y0 + t[1] * s, Z0 + t[2] * s);
+    ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = C.surface; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  };
+  seg(tu, C.dir1); seg(tv, C.dir2);
+  const P0 = proj(X0, Y0, Z0);
+  ctx.beginPath(); ctx.arc(P0.x, P0.y, 6.5, 0, 7); ctx.fillStyle = C.surface; ctx.fill();
+  ctx.beginPath(); ctx.arc(P0.x, P0.y, 4.5, 0, 7); ctx.fillStyle = C.ink; ctx.fill();
+  // axis labels
+  ctx.font = MONO; ctx.fillStyle = C.muted; ctx.textBaseline = "middle";
+  const nearY = proj(0, -1, zf).d < proj(0, 1, zf).d ? -1 : 1;
+  const nearX = proj(-1, 0, zf).d < proj(1, 0, zf).d ? -1 : 1;
+  const lab = (x, y, z, text, color = C.muted, dx = 0, dy = 0) => { const q = proj(x, y, z); ctx.fillStyle = color; ctx.textAlign = "center"; ctx.fillText(text, q.x + dx, q.y + dy); };
+  for (const S of [40, 70, 100, 130, 160]) lab(nx(S), nearY * 1.13, zf, String(S));
+  lab(0, nearY * 1.32, zf, "spot S", C.ink2);
+  for (const t of [0, 0.5, 1]) { const y = Y.min + (Y.max - Y.min) * t; lab(nearX * 1.13, ny(y), zf, Y.fmt(y)); }
+  lab(nearX * 1.34, 0, zf, `${Y.lab} ${Y.name}`, C.ink2);
+  lab(far[0], far[1], ZH, fmt(zmax, 3), C.muted, 0, -10);
+  lab(far[0], far[1], -ZH, fmt(zmin, 3), C.muted, 0, 12);
+  lab(far[0], far[1], ZH, QUANT[q].lab, C.ink2, 0, -26);
+
+  // readouts
+  const fname = QUANT[q].lab;
+  document.getElementById("pdBox").innerHTML = `
+    <div><span class="lab"><i class="sw" style="--c:var(--c-delta)"></i>Blue path: only the stock price changes (${Y.name} stays ${Y.fmt(y0)})</span>
+      <span class="num">steepness ∂${fname}/∂S = ${fmt(dS, 5)}</span><span class="who">This is ${PNAME[q].S}.</span></div>
+    <div><span class="lab"><i class="sw" style="--c:var(--c-gamma)"></i>Orange path: only ${Y.name} changes (stock stays $${P.S.toFixed(1)})</span>
+      <span class="num">steepness ∂${fname}/∂${Y.lab} = ${fmt(dY, 5)}</span><span class="who">This is ${PNAME[q][ax]}.${ax === "tau" ? " Minus, because more time left is the opposite of time passing." : ""}</span></div>`;
+
+  // slice charts
+  const xs1 = [], ys1 = [], xs2 = [], ys2 = [];
+  for (let i = 0; i <= 160; i++) {
+    const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / 160; xs1.push(S); ys1.push(f(Object.assign({}, P, { S })));
+    const y = Y.min + (Y.max - Y.min) * i / 160; const p = Object.assign({}, P); p[ax] = y; xs2.push(y); ys2.push(f(p));
+  }
+  const rng = arr => { let a = Math.min(...arr.filter(isFinite)), b = Math.max(...arr.filter(isFinite)); const pad = (b - a) * 0.1 || 1; return [a - pad, b + pad]; };
+  document.getElementById("lg1").innerHTML = `<span><i class="k" style="--c:var(--c-delta)"></i>${fname}(S) with ${Y.lab} = ${Y.fmt(y0)}</span>`;
+  document.getElementById("lg2").innerHTML = `<span><i class="k" style="--c:var(--c-gamma)"></i>${fname}(${Y.lab}) with S = ${P.S.toFixed(1)}</span>`;
+  const s1 = plots.S1.begin(SDOM, rng(ys1));
+  s1.axes({ xlabel: "S", ylabel: fname, ny: 4 }); s1.clip();
+  s1.path(xs1, ys1, C.dir1, 2);
+  const w1 = (SDOM[1] - SDOM[0]) * 0.18;
+  s1.fn(S => z0 + dS * (S - P.S), P.S - w1, P.S + w1, C.ink, 1.5, null, 2);
+  s1.vline(P.S, C.ink2); s1.dot(P.S, z0, C.ink); s1.unclip();
+  s1.tag(P.S, z0, `slope ${fmt(dS, 3)}`, 10, -14);
+  const s2 = plots.S2.begin([Y.min, Y.max], rng(ys2));
+  s2.axes({ xlabel: Y.lab, ylabel: fname, ny: 4, xfmt: v => Y.fmt(v) }); s2.clip();
+  s2.path(xs2, ys2, C.dir2, 2);
+  const w2 = (Y.max - Y.min) * 0.18;
+  s2.fn(y => z0 + dY * (y - y0), y0 - w2, y0 + w2, C.ink, 1.5, null, 2);
+  s2.vline(y0, C.ink2); s2.dot(y0, z0, C.ink); s2.unclip();
+  s2.tag(y0, z0, `slope ${fmt(dY, 3)}`, 10, -14);
+}
+bindHorizontal(plots.S1.cv, () => plots.S1, x => setParam("S", Math.round(x * 10) / 10));
+bindHorizontal(plots.S2.cv, () => plots.S2, x => setParam(UI.yaxis, x));
+
+/* ---------------- §4 family tree ---------------- */
+const G = {
+  price: { name: "Price", sym: "V", tex: "V", order: 0, wrt: [], parents: [],
+    cf: "S e^{-q\\tau}N(d_1) - K e^{-r\\tau}N(d_2)", cfPut: "K e^{-r\\tau}N(-d_2) - S e^{-q\\tau}N(-d_1)",
+    ask: "What is the option worth right now?", mean: "The starting point. Every other node is a slope of this one, or a slope of a slope." },
+  delta: { name: "Delta", sym: "Δ", tex: "\\Delta", wrt: ["S"], parents: [["price", "S"]], color: "delta",
+    cf: "e^{-q\\tau}N(d_1)", cfPut: "-e^{-q\\tau}N(-d_1)",
+    ask: "If the stock rises $1, how much does the option move?", mean: "Delta is also the hedge ratio: if you sell Δ shares of stock against the option, small stock moves cancel out." },
+  vega: { name: "Vega", sym: "ν", tex: "\\nu", wrt: ["sigma"], parents: [["price", "sigma"]], color: "vega",
+    cf: "S e^{-q\\tau}\\varphi(d_1)\\sqrt{\\tau}",
+    ask: "If the market expects bigger swings, how much is the option worth?", mean: "Vega is shown per 1.00 of volatility; divide by 100 for one vol point. Calls and puts with the same strike have the same vega." },
+  theta: { name: "Theta", sym: "Θ", tex: "\\Theta", wrt: ["t"], parents: [["price", "t"]], color: "theta",
+    cf: "-\\frac{S e^{-q\\tau}\\varphi(d_1)\\,\\sigma}{2\\sqrt{\\tau}} - rKe^{-r\\tau}N(d_2) + qSe^{-q\\tau}N(d_1)",
+    cfPut: "-\\frac{S e^{-q\\tau}\\varphi(d_1)\\,\\sigma}{2\\sqrt{\\tau}} + rKe^{-r\\tau}N(-d_2) - qSe^{-q\\tau}N(-d_1)",
+    ask: "As each day passes, how much value does the option lose?", mean: "Theta is per year; divide by 365 for one day. It is usually negative: an option's time value melts as expiry approaches." },
+  rho: { name: "Rho", sym: "ρ", tex: "\\rho", wrt: ["r"], parents: [["price", "r"]], color: "rho",
+    cf: "K\\tau e^{-r\\tau}N(d_2)", cfPut: "-K\\tau e^{-r\\tau}N(-d_2)",
+    ask: "If interest rates go up, how much does the option move?", mean: "Rho is per 1.00 of rate; divide by 100 for one percentage point. It matters most for long-dated options." },
+  gamma: { name: "Gamma", sym: "Γ", tex: "\\Gamma", wrt: ["S", "S"], parents: [["delta", "S"]], color: "gamma",
+    cf: "\\frac{e^{-q\\tau}\\varphi(d_1)}{S\\sigma\\sqrt{\\tau}}",
+    ask: "If the stock rises $1, how much does delta change?", mean: "Gamma is how much the price curve bends. It is biggest near the strike just before expiry, which is when hedges need adjusting most often." },
+  vanna: { name: "Vanna", sym: "vanna", tex: "\\text{vanna}", wrt: ["S", "sigma"], parents: [["delta", "sigma"], ["vega", "S"]],
+    cf: "-e^{-q\\tau}\\varphi(d_1)\\,\\frac{d_2}{\\sigma}",
+    ask: "If volatility rises, how much does delta change?", mean: "Vanna can be reached two ways: how delta reacts to volatility, or how vega reacts to the stock price. Both give the same number, as the table shows." },
+  charm: { name: "Charm", sym: "charm", tex: "\\text{charm}", wrt: ["S", "t"], parents: [["delta", "t"], ["theta", "S"]],
+    cf: "q e^{-q\\tau}N(d_1) - e^{-q\\tau}\\varphi(d_1)\\,\\frac{2(r-q)\\tau - d_2\\sigma\\sqrt{\\tau}}{2\\tau\\sigma\\sqrt{\\tau}}",
+    cfPut: "-q e^{-q\\tau}N(-d_1) - e^{-q\\tau}\\varphi(d_1)\\,\\frac{2(r-q)\\tau - d_2\\sigma\\sqrt{\\tau}}{2\\tau\\sigma\\sqrt{\\tau}}",
+    ask: "As a day passes, how much does delta drift?", mean: "Charm is why a hedge goes stale overnight even if the stock doesn't move. It is also how theta changes with the stock price." },
+  volga: { name: "Volga", sym: "volga", tex: "\\text{volga}", wrt: ["sigma", "sigma"], parents: [["vega", "sigma"]],
+    cf: "\\nu\\,\\frac{d_1 d_2}{\\sigma}",
+    ask: "If volatility rises, how much does vega change?", mean: "Volga (also called vomma) is the bend of the price in volatility. It is positive for options away from the strike: their vega grows as volatility rises." },
+  veta: { name: "Veta", sym: "veta", tex: "\\text{veta}", wrt: ["sigma", "t"], parents: [["vega", "t"], ["theta", "sigma"]],
+    cf: "S e^{-q\\tau}\\varphi(d_1)\\sqrt{\\tau}\\left[q + \\frac{(r-q)\\,d_1}{\\sigma\\sqrt{\\tau}} - \\frac{1 + d_1 d_2}{2\\tau}\\right]",
+    ask: "As a day passes, how much does vega change?", mean: "Veta is also how theta changes with volatility. Two routes, one number." },
+  speed: { name: "Speed", sym: "speed", tex: "\\text{speed}", wrt: ["S", "S", "S"], parents: [["gamma", "S"]],
+    cf: "-\\frac{\\Gamma}{S}\\left(\\frac{d_1}{\\sigma\\sqrt{\\tau}} + 1\\right)",
+    ask: "If the stock rises $1, how much does gamma change?", mean: "Speed is the slope of the gamma curve. It is zero at the top of the gamma hump and large on its sides." },
+  zomma: { name: "Zomma", sym: "zomma", tex: "\\text{zomma}", wrt: ["S", "S", "sigma"], parents: [["gamma", "sigma"], ["vanna", "S"]],
+    cf: "\\Gamma\\,\\frac{d_1 d_2 - 1}{\\sigma}",
+    ask: "If volatility rises, how much does gamma change?", mean: "Higher volatility spreads gamma out: less of it at the strike, more further away." },
+  color: { name: "Color", sym: "color", tex: "\\text{color}", wrt: ["S", "S", "t"], parents: [["gamma", "t"], ["charm", "S"]],
+    cf: "\\frac{e^{-q\\tau}\\varphi(d_1)}{2S\\tau\\sigma\\sqrt{\\tau}}\\left[2q\\tau + 1 + \\frac{2(r-q)\\tau - d_2\\sigma\\sqrt{\\tau}}{\\sigma\\sqrt{\\tau}}\\,d_1\\right]",
+    ask: "As a day passes, how much does gamma change?", mean: "Near the strike, color is positive: gamma piles up as expiry approaches." },
+  ultima: { name: "Ultima", sym: "ultima", tex: "\\text{ultima}", wrt: ["sigma", "sigma", "sigma"], parents: [["volga", "sigma"]],
+    cf: "-\\frac{\\nu}{\\sigma^2}\\left[d_1 d_2 (1 - d_1 d_2) + d_1^2 + d_2^2\\right]",
+    ask: "If volatility rises, how much does volga change?", mean: "Ultima is the slope of volga. It is the third level down, rarely used in practice but part of the same family." },
+};
+for (const k in G) G[k].order = G[k].wrt.length;
+const COLS = [["price"], ["delta", "vega", "theta", "rho"], ["gamma", "vanna", "charm", "volga", "veta"], ["speed", "zomma", "color", "ultima"]];
+const COLH = ["Price", "Greeks", "Greeks of Greeks", "One more level"];
+const VTEX = { S: "S", sigma: "\\sigma", t: "t", r: "r" };
+const VTXT = { S: "S", sigma: "σ", t: "t", r: "r" };
+const SUP = ["", "", "²", "³"];
+function wrtText(wrt) {
+  if (!wrt.length) return "V";
+  const cnt = {}; wrt.forEach(v => cnt[v] = (cnt[v] || 0) + 1);
+  return `∂${SUP[wrt.length]}V/` + Object.entries(cnt).map(([v, n]) => "∂" + VTXT[v] + SUP[n]).join("");
+}
+function defTex(wrt) {
+  const cnt = {}; wrt.forEach(v => cnt[v] = (cnt[v] || 0) + 1);
+  const n = wrt.length;
+  const den = Object.entries(cnt).map(([v, c]) => "\\partial " + VTEX[v] + (c > 1 ? "^{" + c + "}" : "")).join("\\,");
+  return `\\frac{\\partial${n > 1 ? "^{" + n + "}" : ""} V}{${den}}`;
+}
+const treeEl = document.getElementById("tree");
+treeEl.insertAdjacentHTML("beforeend", COLS.map((col, ci) => `<div class="tcol"><span class="tcol-h">${COLH[ci]}</span>${col.map(k => {
+  const g = G[k];
+  return `<button type="button" class="node" data-g="${k}" aria-pressed="${k === UI.greek}"><span class="n1">${g.color ? `<i class="sw" style="--c:var(--c-${g.color})"></i>` : ""}${g.sym === g.name.toLowerCase() ? g.name : g.sym + " " + (k === "price" ? "" : g.name)}</span><span class="n2">${wrtText(g.wrt)}</span></button>`;
+}).join("")}</div>`).join(""));
+treeEl.addEventListener("click", e => {
+  const b = e.target.closest(".node"); if (!b) return;
+  UI.greek = b.dataset.g;
+  treeEl.querySelectorAll(".node").forEach(n => n.setAttribute("aria-pressed", n === b));
+  drawEdges(); renderDetailText(); invalidate();
+});
+function drawEdges() {
+  const svg = document.getElementById("treeEdges"), box = treeEl.getBoundingClientRect();
+  const pos = {};
+  treeEl.querySelectorAll(".node").forEach(n => { const r = n.getBoundingClientRect(); pos[n.dataset.g] = { l: r.left - box.left, r: r.right - box.left, y: r.top - box.top + r.height / 2 }; });
+  const sel = UI.greek;
+  // edges into the selected node and its ancestors
+  const hot = new Set(), stack = [sel];
+  while (stack.length) { const k = stack.pop(); for (const [p] of G[k].parents) { const id = p + ">" + k; if (!hot.has(id)) { hot.add(id); stack.push(p); } } }
+  let out = "", labels = "";
+  for (const k in G) for (const [p, v] of G[k].parents) {
+    const a = pos[p], b = pos[k]; if (!a || !b) continue;
+    const x1 = a.r, y1 = a.y, x2 = b.l, y2 = b.y, mx = (x1 + x2) / 2;
+    const on = hot.has(p + ">" + k);
+    out += `<path class="edge${on ? " on" : ""}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
+    if (on && k === sel) labels += `<text class="edge-lbl" x="${mx}" y="${(y1 + y2) / 2 + 4}" text-anchor="middle">∂/∂${VTXT[v]}</text>`;
+  }
+  svg.innerHTML = out + labels;
+}
+function typeset(el) {
+  const MJ = window.MathJax;
+  if (MJ && MJ.typesetPromise && MJ.startup && MJ.startup.promise) {
+    MJ.startup.promise.then(() => { MJ.typesetClear([el]); return MJ.typesetPromise([el]); }).catch(() => {});
+  }
+}
+let detailKey = "";
+const VNAME = { S: "the stock price", sigma: "volatility", t: "time (one step forward)", r: "the interest rate" };
+const gLabel = k => G[k].sym === G[k].name.toLowerCase() || k === "price" ? G[k].name.toLowerCase() : `${G[k].name.toLowerCase()} (${G[k].sym})`;
+function renderDetailText() {
+  const k = UI.greek, g = G[k], key = k + "|" + P.type;
+  const el = document.getElementById("detailText");
+  if (detailKey !== key) {
+    detailKey = key;
+    const paths = g.parents.map(([p, v]) => p === "price" ? null : `\\frac{\\partial ${G[p].tex}}{\\partial ${VTEX[v]}}`).filter(Boolean);
+    const defLine = k === "price" ? "V" : `${g.tex} = ${defTex(g.wrt)}${paths.length ? " = " + paths.join(" = ") : ""}`;
+    const cf = P.type === "put" && g.cfPut ? g.cfPut : g.cf;
+    const level = k === "price" ? "the starting point" : ["", "a Greek", "a Greek of a Greek", "one more level down"][g.order];
+    el.innerHTML = `
+      <span class="meta">${level}${g.parents.length > 1 ? " · two routes" : ""}</span>
+      <h3>${g.name}</h3>
+      <p class="q-big">${g.ask}</p>
+      <p class="say">Right now: <b id="detailVal"></b></p>
+      <p class="note">${g.mean}</p>
+      ${k === "price" ? "" : `<div>\\[ ${defLine} \\]</div>`}
+      <div class="tbl-wrap"><table class="t"><thead><tr><th>How we got it</th><th class="num">Value</th><th class="num">Off by</th></tr></thead><tbody id="chkBody"></tbody></table></div>
+      <p class="note" id="chkNote"></p>
+      <details class="deeper"><summary>Show the exact formula</summary><div class="deeper-body">\\[ ${k === "price" ? (P.type === "put" ? "P" : "C") : g.tex} = ${cf} \\]</div></details>`;
+    typeset(el);
+  }
+  const val = bs(P)[k];
+  document.getElementById("detailVal").textContent = fmt(val, 5);
+  let rows = `<tr class="em"><td>exact formula</td><td class="num">${fmt(val, 6)}</td><td></td></tr>`;
+  if (k !== "price") {
+    for (const [p, v] of g.parents) {
+      const est = numD(q => bs(q)[p], P, [v], STEP_BY_ORDER[1]);
+      rows += `<tr><td>nudge ${VNAME[v]}, watch ${gLabel(p)}</td><td class="num">${fmt(est, 6)}</td><td class="num">${fmt(Math.abs(est - val), 2)}</td></tr>`;
+    }
+    if (g.order > 1) {
+      const est = numD(q => bs(q).price, P, g.wrt, STEP_BY_ORDER[g.order]);
+      rows += `<tr><td>nudge the price ${g.order} times (${wrtText(g.wrt)})</td><td class="num">${fmt(est, 6)}</td><td class="num">${fmt(Math.abs(est - val), 2)}</td></tr>`;
+    }
+  }
+  document.getElementById("chkBody").innerHTML = rows;
+  document.getElementById("chkNote").textContent = g.parents.length > 1
+    ? "Two different routes, one answer: the order in which you nudge doesn't matter."
+    : k === "price" ? "" : "Measured by actually nudging the input a tiny bit. The tiny differences are rounding, not a mistake in the formula.";
+}
+
+function renderTree() {
+  const k = UI.greek, g = G[k];
+  const f = q => bs(q)[k];
+  // vs S for three maturities
+  const taus = [P.tau / 4, P.tau, Math.min(4 * P.tau, 8)];
+  const cols = [C.ink2, C.ink, C.muted], dashes = [[5, 3], null, [1.5, 3.5]];
+  const series = taus.map(t => { const xs = [], ys = []; for (let i = 0; i <= 200; i++) { const S = SDOM[0] + (SDOM[1] - SDOM[0]) * i / 200; xs.push(S); ys.push(f(Object.assign({}, P, { S, tau: t }))); } return { t, xs, ys }; });
+  let all = series.flatMap(s => s.ys).filter(isFinite).sort((a, b) => a - b);
+  let lo = all[Math.floor(all.length * 0.005)], hi = all[Math.ceil(all.length * 0.995) - 1];
+  const cur = f(P); lo = Math.min(lo, cur, 0); hi = Math.max(hi, cur, 0);
+  const pad = (hi - lo) * 0.08 || 1;
+  document.getElementById("lgT1").innerHTML = series.map((s, i) =>
+    `<span><i class="k${i === 0 ? " dash" : i === 2 ? " dot" : ""}" style="--c:${["var(--ink-2)", "var(--ink)", "var(--muted)"][i]}"></i>τ = ${s.t.toFixed(3)}${i === 1 ? " (now)" : ""}</span>`).join("");
+  const pt = plots.T1.begin(SDOM, [lo - pad, hi + pad]);
+  pt.axes({ ylabel: `${g.name} against stock price`, xlabel: "S", ny: 4 }); pt.clip();
+  pt.vline(P.K, C.grid);
+  series.forEach((s, i) => pt.path(s.xs, s.ys, cols[i], i === 1 ? 2.25 : 1.6, dashes[i]));
+  if (UI.hoverT1 != null) pt.vline(UI.hoverT1, C.muted, [3, 3]);
+  pt.vline(P.S, C.ink2); pt.dot(P.S, cur, C.ink); pt.unclip();
+  pt.tag(P.S, cur, fmt(cur, 4), 10, -14);
+  plots.T1._series = series;
+
+  // heatmap over S × τ
+  const ph = plots.H.begin(SDOM, [0.02, 2]);
+  const NX = 120, NY = 60;
+  const grid = new Float64Array(NX * NY), absv = [];
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+    const S = SDOM[0] + (SDOM[1] - SDOM[0]) * (i + 0.5) / NX, t = 2 - (2 - 0.02) * (j + 0.5) / NY;
+    const v = f(Object.assign({}, P, { S, tau: t })); grid[j * NX + i] = v; if (isFinite(v)) absv.push(Math.abs(v));
+  }
+  absv.sort((a, b) => a - b);
+  const M = absv[Math.floor(absv.length * 0.98)] || 1;
+  const off = plots.H._off || (plots.H._off = document.createElement("canvas"));
+  off.width = NX; off.height = NY;
+  const octx = off.getContext("2d"), img = octx.createImageData(NX, NY);
+  const pos = rgb(C.pos), neg = rgb(C.neg), mid = rgb(C.mid);
+  for (let n = 0; n < NX * NY; n++) {
+    let t = grid[n] / M; if (!isFinite(t)) t = 0; t = Math.max(-1, Math.min(1, t));
+    const c = t >= 0 ? mix(mid, pos, t) : mix(mid, neg, -t);
+    img.data[n * 4] = c[0]; img.data[n * 4 + 1] = c[1]; img.data[n * 4 + 2] = c[2]; img.data[n * 4 + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  ph.ctx.imageSmoothingEnabled = true;
+  ph.ctx.drawImage(off, ph.L, ph.T, ph.R - ph.L, ph.B - ph.T);
+  ph.axes({ yticks: [0.5, 1, 1.5, 2], noZero: true });
+  { const c = ph.ctx; c.save(); c.font = MONO; c.fillStyle = C.ink2; c.textAlign = "left"; c.fillText("τ ↑", 4, ph.T + 8); c.restore(); }
+  ph.clip();
+  ph.ctx.strokeStyle = alpha(C.ink, 0.35); ph.ctx.setLineDash([3, 3]);
+  ph.ctx.beginPath(); ph.ctx.moveTo(ph.X(P.K), ph.T); ph.ctx.lineTo(ph.X(P.K), ph.B); ph.ctx.stroke(); ph.ctx.setLineDash([]);
+  const cx = ph.X(P.S), cyy = ph.Y(P.tau);
+  ph.ctx.beginPath(); ph.ctx.arc(cx, cyy, 6, 0, 7); ph.ctx.strokeStyle = C.surface; ph.ctx.lineWidth = 4; ph.ctx.stroke();
+  ph.ctx.beginPath(); ph.ctx.arc(cx, cyy, 6, 0, 7); ph.ctx.strokeStyle = C.ink; ph.ctx.lineWidth = 2; ph.ctx.stroke();
+  ph.unclip();
+  document.getElementById("heatTitle").textContent = `${g.name} for every stock price (across) and time left (up). Blue is positive, red negative. Dashed line: the strike. Click to jump there.`;
+  document.getElementById("hlMin").textContent = fmt(-M, 2);
+  document.getElementById("hlMax").textContent = "+" + fmt(M, 2);
+}
+bindHorizontal(plots.T1.cv, () => plots.T1, x => setParam("S", Math.round(x * 10) / 10), (x, e) => {
+  if (x == null || x < SDOM[0] || x > SDOM[1]) { UI.hoverT1 = null; hideTip(); invalidate(); return; }
+  UI.hoverT1 = x;
+  const k = UI.greek;
+  showTip(e, `${G[k].name} at S = ${x.toFixed(1)}`, [P.tau / 4, P.tau, Math.min(4 * P.tau, 8)].map((t, i) => ({ l: `τ ${t.toFixed(3)}`, v: fmt(bs(Object.assign({}, P, { S: x, tau: t }))[k]) })));
+  invalidate();
+});
+{
+  const cv = plots.H.cv;
+  cv.addEventListener("pointermove", e => {
+    const ph = plots.H, S = ph.invX(e.offsetX), t = ph.invY(e.offsetY);
+    if (S < SDOM[0] || S > SDOM[1] || t < 0.02 || t > 2) { hideTip(); return; }
+    showTip(e, G[UI.greek].name, [{ l: "S", v: S.toFixed(1) }, { l: "τ", v: t.toFixed(3) }, { l: "value", v: fmt(bs(Object.assign({}, P, { S, tau: t }))[UI.greek]) }]);
+  });
+  cv.addEventListener("pointerleave", hideTip);
+  cv.addEventListener("click", e => { const ph = plots.H; setParam("S", Math.round(ph.invX(e.offsetX) * 10) / 10); setParam("tau", Math.round(ph.invY(e.offsetY) * 200) / 200); });
+}
+
+/* ---------------- §5 Taylor ---------------- */
+const TY = [
+  { k: "dS", sym: "dS", label: "spot move", min: -30, max: 30, step: 0.5, fmt: v => (v > 0 ? "+" : "") + v.toFixed(1) },
+  { k: "dVol", sym: "dσ", label: "vol move (points)", min: -15, max: 15, step: 0.5, fmt: v => (v > 0 ? "+" : "") + v.toFixed(1) + " pt" },
+  { k: "dDays", sym: "dt", label: "days elapsed", min: 0, max: 90, step: 1, fmt: v => v + " d" },
+  { k: "dBp", sym: "dr", label: "rate move (bp)", min: -200, max: 200, step: 5, fmt: v => (v > 0 ? "+" : "") + v + " bp" },
+];
+document.getElementById("tySliders").innerHTML = TY.map(c => `
+  <div class="ctl"><div class="ctl-row"><label for="ty-${c.k}"><b>${c.sym}</b>${c.label}</label><output id="tyo-${c.k}" class="num"></output></div>
+  <input type="range" id="ty-${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${UI[c.k]}"></div>`).join("");
+for (const c of TY) document.getElementById("ty-" + c.k).addEventListener("input", e => { UI[c.k] = +e.target.value; invalidate(); });
+
+function barsHTML(rows, M) {
+  return rows.map(r => {
+    const frac = Math.min(1, Math.abs(r.v) / M) * 50;
+    const bar = r.v === 0 || !isFinite(r.v) ? "" : `<div class="bar ${r.v > 0 ? "pos" : "neg"}" style="--c:${r.c};${r.v > 0 ? `left:50%;width:${frac}%` : `left:${50 - frac}%;width:${frac}%`}"></div>`;
+    return `<div class="bar-row${r.sum ? " sum" : ""}"><span class="bl">${r.c && !r.sum ? `<i class="sw" style="--c:${r.c}"></i>` : ""}<span class="bt">${r.l}${r.sub ? `<small>${r.sub}</small>` : ""}</span></span><div class="track">${bar}</div><span class="bv">${fmtS(r.v, 4)}</span></div>`;
+  }).join("");
+}
+function renderTaylor(g) {
+  for (const c of TY) document.getElementById("tyo-" + c.k).textContent = c.fmt(UI[c.k]);
+  let dt = UI.dDays / 365, capped = false;
+  if (dt > P.tau - 1e-4) { dt = P.tau - 1e-4; capped = true; }
+  const d = { S: UI.dS, sig: UI.dVol / 100, t: dt, r: UI.dBp / 10000 };
+  const newSig = Math.max(0.005, P.sigma + d.sig);
+  const actual = bs(Object.assign({}, P, { S: Math.max(0.01, P.S + d.S), sigma: newSig, tau: P.tau - dt, r: P.r + d.r })).price - g.price;
+  const terms = [
+    { l: "Δ·dS", sub: "from the stock move", v: g.delta * d.S, c: "var(--c-delta)" },
+    { l: "ν·dσ", sub: "from the vol move", v: g.vega * d.sig, c: "var(--c-vega)" },
+    { l: "Θ·dt", sub: "from time passing", v: g.theta * d.t, c: "var(--c-theta)" },
+    { l: "ρ·dr", sub: "from the rate move", v: g.rho * d.r, c: "var(--c-rho)" },
+    { l: "½Γ·dS²", sub: "curve bending (gamma)", v: 0.5 * g.gamma * d.S * d.S, c: "var(--c-gamma)" },
+    { l: "vanna·dS·dσ", sub: "stock and vol together", v: g.vanna * d.S * d.sig, c: "var(--muted)" },
+    { l: "½volga·dσ²", sub: "vol curve bending", v: 0.5 * g.volga * d.sig * d.sig, c: "var(--muted)" },
+    { l: "charm·dS·dt", sub: "stock and time together", v: g.charm * d.S * d.t, c: "var(--muted)" },
+  ];
+  const first = terms.slice(0, 4).reduce((a, t) => a + t.v, 0);
+  const second = terms.reduce((a, t) => a + t.v, 0);
+  const rows = terms.concat([
+    { l: "quick estimate", sub: "first four rows", v: first, c: "var(--ink-2)", sum: true },
+    { l: "better estimate", sub: "all eight rows", v: second, c: "var(--ink-2)", sum: true },
+    { l: "true change", sub: "full repricing", v: actual, c: "var(--ink)", sum: true },
+    { l: "still missing", sub: "true − better", v: actual - second, c: "var(--axis)", sum: true },
+  ]);
+  const M = Math.max(1e-9, ...rows.map(r => Math.abs(r.v)));
+  document.getElementById("tyBars").innerHTML = barsHTML(rows, M);
+  const e1 = Math.abs(actual - first), e2 = Math.abs(actual - second);
+  document.getElementById("tyNote").innerHTML =
+    `The option starts at <b class="num">${fmt(g.price, 5)}</b>. The quick estimate is off by <b class="num">${fmt(e1, 3)}</b>; adding the bending terms brings that down to <b class="num">${fmt(e2, 3)}</b>. Try a big stock move (±25) with the curvature terms in mind: that's where the quick estimate breaks down.` +
+    (capped ? ` (Elapsed time was capped at expiry.)` : "");
+}
+
+/* ---------------- §6 PDE ---------------- */
+function renderPDE(g) {
+  const S = P.S, s = P.sigma;
+  const terms = [
+    { l: "Θ", sub: "time decay (rent)", v: g.theta, c: "var(--c-theta)" },
+    { l: "½σ²S²Γ", sub: "gamma gains from moves", v: 0.5 * s * s * S * S * g.gamma, c: "var(--c-gamma)" },
+    { l: "(r−q)·S·Δ", sub: "financing the hedge", v: (P.r - P.q) * S * g.delta, c: "var(--c-delta)" },
+    { l: "−r·V", sub: "interest on the cost", v: -P.r * g.price, c: "var(--muted)" },
+  ];
+  const sum = terms.reduce((a, t) => a + t.v, 0);
+  const M = Math.max(1e-9, ...terms.map(t => Math.abs(t.v)));
+  document.getElementById("pdeBars").innerHTML = barsHTML(terms.concat([{ l: "total", sub: "always zero", v: sum, c: "var(--ink)", sum: true }]), M);
+  const sd = S * s / Math.sqrt(365), gPnl = 0.5 * g.gamma * sd * sd, tDay = g.theta / 365;
+  document.getElementById("pdeCallout").innerHTML = `
+    <span>A typical one-day move for this stock is about <span class="num">$${fmt(sd, 3)}</span> (that's S·σ/√365).</span>
+    <span>Gamma earns you <span class="num">${fmtS(gPnl, 4)}</span> on a move that size. One day of theta costs <span class="num">${fmtS(tDay, 4)}</span>.</span>
+    <span>${Math.abs(P.r) + Math.abs(P.q) > 1e-12 ? "They nearly cancel; the gap is the interest-rate terms. Set the interest rate and dividend yield to 0 in the panel and they cancel exactly." : "They cancel exactly: theta is the fair price of gamma."}</span>`;
+}
+
+/* ---------------- car demo ---------------- */
+// Velocity follows the bell-curve S-shape N(·), so position has the same shape as a call price curve.
+const CAR = { t: 5, TMAX: 12, VMAX: 10, T0: 6, W: 2, playing: false, last: 0 };
+const carU = t => (t - CAR.T0) / CAR.W;
+const carX0 = CAR.VMAX * (-CAR.T0 * ncdf(carU(0)) + CAR.W * npdf(carU(0)));
+const carX = t => CAR.VMAX * ((t - CAR.T0) * ncdf(carU(t)) + CAR.W * npdf(carU(t))) - carX0;
+const carV = t => CAR.VMAX * ncdf(carU(t));
+const carA = t => CAR.VMAX * npdf(carU(t)) / CAR.W;
+plots.CX = new Plot(document.getElementById("cvCX"), { b: 8 });
+plots.CV = new Plot(document.getElementById("cvCV"), { b: 8 });
+plots.CA = new Plot(document.getElementById("cvCA"));
+const CAR_SVG = '<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><path d="M1.5 9 V7.2 Q1.5 6 3 5.6 L5 5 L7.2 2.4 Q7.8 1.8 8.8 1.8 H14 Q15 1.8 15.6 2.5 L17.6 5 L19.6 5.6 Q20.5 5.9 20.5 7 V9 Z" fill="currentColor"/><circle cx="6" cy="9.4" r="2.1" fill="currentColor" stroke="var(--surface-2)" stroke-width="1.2"/><circle cx="16" cy="9.4" r="2.1" fill="currentColor" stroke="var(--surface-2)" stroke-width="1.2"/></svg>';
+document.querySelectorAll(".car-tag").forEach(el => el.insertAdjacentHTML("afterbegin", CAR_SVG));
+
+function renderCar() {
+  const t0 = CAR.t, XMAX = carX(CAR.TMAX);
+  // road
+  const { ctx, w, h } = setupCanvas(document.getElementById("cvRoad"));
+  const L = 54, Rr = w - 14, roadY = 40, X = d => L + d / XMAX * (Rr - L);
+  ctx.fillStyle = C.grid; ctx.fillRect(L - 10, roadY - 14, Rr - L + 20, 28);
+  ctx.strokeStyle = C.axis; ctx.setLineDash([8, 8]); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(L - 10, roadY + 0.5); ctx.lineTo(Rr + 10, roadY + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font = MONO; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let d = 0; d <= XMAX + 1e-9; d += 10) {
+    ctx.fillStyle = C.muted; ctx.fillText(d + " m", X(d), roadY + 18);
+    ctx.fillRect(X(d) - 0.5, roadY + 12, 1, 4);
+  }
+  for (let k = 0; k <= CAR.TMAX; k++) { ctx.beginPath(); ctx.arc(X(carX(k)), roadY - 20, 2.5, 0, 7); ctx.fillStyle = alpha(C.ink, k <= t0 ? 0.45 : 0.15); ctx.fill(); }
+  const cx = X(carX(t0)), cy = roadY - 2;
+  ctx.save(); ctx.translate(cx, cy); ctx.fillStyle = C.ink;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-17, -9, 34, 9, 3) : ctx.rect(-17, -9, 34, 9); ctx.fill();
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-9, -15, 17, 8, 3) : ctx.rect(-9, -15, 17, 8); ctx.fill();
+  for (const wx of [-10, 10]) { ctx.beginPath(); ctx.arc(wx, 1, 4, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.beginPath(); ctx.arc(wx, 1, 1.6, 0, 7); ctx.fillStyle = C.grid; ctx.fill(); }
+  ctx.restore();
+  // velocity arrow
+  const v0 = carV(t0);
+  if (v0 > 0.05) {
+    const len = v0 / CAR.VMAX * 60;
+    ctx.strokeStyle = C.delta; ctx.fillStyle = C.delta; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(cx + 20, cy - 5); ctx.lineTo(cx + 20 + len, cy - 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 24 + len, cy - 5); ctx.lineTo(cx + 17 + len, cy - 9.5); ctx.lineTo(cx + 17 + len, cy - 0.5); ctx.closePath(); ctx.fill();
+  }
+  // charts
+  const TD = [0, CAR.TMAX], n = 200, ts = [], xs = [], vs = [], as = [];
+  for (let i = 0; i <= n; i++) { const t = CAR.TMAX * i / n; ts.push(t); xs.push(carX(t)); vs.push(carV(t)); as.push(carA(t)); }
+  const x0 = carX(t0), a0 = carA(t0);
+  const px = plots.CX.begin(TD, [-2, XMAX * 1.06]);
+  px.axes({ ylabel: "position (m)", noX: true, ny: 3 }); px.clip();
+  px.path(ts, xs, C.ink, 2);
+  px.fn(t => x0 + v0 * (t - t0), t0 - 2.5, t0 + 2.5, C.delta, 2, null, 2);
+  px.vline(t0, C.ink2); px.dot(t0, x0, C.ink); px.unclip();
+  px.tag(t0, x0, `slope = velocity = ${v0.toFixed(1)} m/s`, 12, 16);
+  const pvv = plots.CV.begin(TD, [-0.5, CAR.VMAX * 1.12]);
+  pvv.axes({ ylabel: "velocity (m/s)", noX: true, yticks: [0, 5, 10] }); pvv.clip();
+  pvv.path(ts, vs, C.delta, 2);
+  pvv.fn(t => v0 + a0 * (t - t0), t0 - 2, t0 + 2, C.gamma, 2, null, 2);
+  pvv.vline(t0, C.ink2); pvv.dot(t0, v0, C.delta); pvv.unclip();
+  pvv.tag(t0, v0, `slope = acceleration = ${a0.toFixed(2)} m/s²`, 12, 16);
+  const amax = CAR.VMAX * npdf(0) / CAR.W;
+  const pa = plots.CA.begin(TD, [0, amax * 1.25]);
+  pa.axes({ ylabel: "acceleration (m/s²)", ny: 2 }); pa.clip();
+  pa.path(ts, as, C.gamma, 2);
+  pa.vline(t0, C.ink2); pa.dot(t0, a0, C.gamma); pa.unclip();
+  { const c = pa.ctx; c.save(); c.font = MONO; c.fillStyle = C.ink2; c.textAlign = "right"; c.textBaseline = "top"; c.fillText("time (s) →", pa.R, pa.T + 2); c.restore(); }
+  const phase = v0 < 1 ? "barely moving, like an option far out of the money (Δ ≈ 0)"
+    : v0 > 9 ? "cruising at top speed, like an option deep in the money (Δ ≈ 1)"
+    : a0 > 0.8 * amax ? "accelerating hardest, like an option near its strike, where gamma peaks"
+    : "picking up speed";
+  document.getElementById("carSay").innerHTML =
+    `At <b>t = ${t0.toFixed(1)} s</b> the car is at <b>${x0.toFixed(1)} m</b>, moving at <b>${v0.toFixed(1)} m/s</b> and accelerating at <b>${a0.toFixed(2)} m/s²</b>. It is ${phase}.`;
+  document.getElementById("carPlay").textContent = CAR.playing ? "❚❚ Pause" : "▶ Play";
+}
+function carTick(now) {
+  if (!CAR.playing) return;
+  const dt = CAR.last ? (now - CAR.last) / 1000 : 0; CAR.last = now;
+  CAR.t = Math.min(CAR.TMAX, CAR.t + dt * 2);
+  if (CAR.t >= CAR.TMAX) CAR.playing = false;
+  renderCar();
+  if (CAR.playing) requestAnimationFrame(carTick);
+}
+document.getElementById("carPlay").addEventListener("click", () => {
+  CAR.playing = !CAR.playing;
+  if (CAR.playing) { if (CAR.t >= CAR.TMAX) CAR.t = 0; CAR.last = 0; requestAnimationFrame(carTick); }
+  renderCar();
+});
+for (const key of ["CX", "CV", "CA"]) bindHorizontal(plots[key].cv, () => plots[key], t => { CAR.playing = false; CAR.t = Math.max(0, Math.min(CAR.TMAX, t)); renderCar(); });
+
+/* ---------------- render all ---------------- */
+function renderAll() {
+  const g = bs(P);
+  renderReadout(g);
+  renderCar();
+  for (const c of CARDS) {
+    const [a, sub] = c.ans(g);
+    document.getElementById("card-" + c.k).innerHTML = `${a}<small>${sub}</small>`;
+    document.getElementById("cardv-" + c.k).textContent = "= " + fmt(g[c.k], 4);
+  }
+  renderSlope();
+  render3D();
+  renderDetailText();
+  renderTree();
+  renderTaylor(g);
+  renderPDE(g);
+}
+
+readTheme();
+syncControls();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readTheme(); invalidate(); });
+new MutationObserver(() => { readTheme(); invalidate(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+new ResizeObserver(() => { drawEdges(); invalidate(); }).observe(document.querySelector("main"));
+document.querySelectorAll("details.deeper").forEach(d => d.addEventListener("toggle", invalidate));
+renderAll();
+drawEdges();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawEdges(); invalidate(); });
+</script>
+
+</html>
