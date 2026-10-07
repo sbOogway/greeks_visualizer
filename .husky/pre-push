@@ -1,0 +1,8 @@
+# Publish the site to the gh-pages branch whenever main is pushed.
+# git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "$local_sha" != "0000000000000000000000000000000000000000" ]; then
+    echo "husky pre-push: deploying $local_sha to gh-pages"
+    sh scripts/deploy.sh "$local_sha" || { echo "husky pre-push: deploy failed, push aborted"; exit 1; }
+  fi
+done

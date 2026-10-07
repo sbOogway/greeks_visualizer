@@ -1,0 +1,15 @@
+{
+  "name": "greeks-visualizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive visual guide to option Greeks as partial derivatives of the Black–Scholes price.",
+  "scripts": {
+    "build": "sh scripts/build.sh",
+    "deploy": "sh scripts/deploy.sh",
+    "prepare": "husky"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
