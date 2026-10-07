@@ -2,7 +2,7 @@
 
 An interactive, single-page visual guide to option Greeks as partial derivatives of the Black–Scholes price: tangent lines and curvature, a rotatable 3D price landscape, Greeks of Greeks (with a numerical check that mixed partials commute), Taylor-expansion P&L, and the Black–Scholes PDE. A car analogy runs through every section.
 
-**Live:** https://sboogway.github.io/greeks_visualizer/
+**Live:** https://mattiapapaccioli.com/greeks_visualizer/
 
 ## Run locally
 
